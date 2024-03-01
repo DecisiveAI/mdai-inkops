@@ -1,0 +1,31 @@
+metadata:
+  name: test-collector
+  namespace: default
+  annotations:
+    # MUST BE SPECIFIED!
+    # add certificate arn for non-grpc endpoint
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:us-east-1:012345678901:certificate/th15-15-@n-@ut0g3n3r@ted-numb3r # TODO: CHANGE ME TO A REAL ARN!!!
+spec:
+  ingress:
+    annotations:
+      # MUST BE SPECIFIED!
+      # add certificate arn (or multiple certificates arn, comma separated) for the grpc endpoints
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:012345678901:certificate/th15-15-@n-@ut0g3n3r@ted-numb3r # TODO: CHANGE ME TO A REAL ARN!!!
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    # this section is required if collector has grpc endpoints (receivers).
+    # for each enabled grpc receiver receivername -> hostname mapping should be provided
+    # these hostnames must be CNAMEs for corresponding ALB public address and will be used
+    # for connectivity to the corresponding collector receiver
+    collectorEndpoints:
+      otlp: otlp.grpc.endpoint.collector.your-domain.io
+      jaeger: jaeger.grpc.endpoint.collector.your-domain.io
+  # 2 replicas recommnded
+  replicas: 2
+  # mandatory only when  autoscaler is enabled
+  # otherwise optional. can be used to limit resources consumtion
+  resources:
+    limits:
+      cpu: 500m
+    requests:
+      cpu: 250m
+  upgradeStrategy: automatic
