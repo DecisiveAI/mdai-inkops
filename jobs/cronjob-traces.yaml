@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: telemetrygen-traces
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: telemetrygen
+            image: public.ecr.aws/p3k6k6h3/telemetrygen:current
+            imagePullPolicy: IfNotPresent
+            args:
+            - "traces"
+            - "--otlp-endpoint"
+            - "test-collector-collector:4318"
+            - "--otlp-insecure"
+            - "true"
+            - "--otlp-http"
+            - "--duration"
+            - "1s"
+          restartPolicy: OnFailure

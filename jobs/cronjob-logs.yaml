@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: telemetrygen-logs
+spec:
+  # Change this to the frequency you desire -- currently it's set to 5 minutes
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: telemetrygen
+            image: public.ecr.aws/p3k6k6h3/telemetrygen:current
+            imagePullPolicy: IfNotPresent
+            args:
+            - "logs"
+            - "--otlp-endpoint"
+            - "10.244.0.8:4318"
+            - "--otlp-insecure"
+            - "true"
+            - "--otlp-http"
+            - "--logs"
+            - "50"
+          restartPolicy: OnFailure
