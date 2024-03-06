@@ -95,7 +95,8 @@ get-aws-role:
 
 .PHONY: set-role-map
 .SILENT: set-role-map
-set-role-map: get-aws-role build
+set-role-map: get-aws-role build dot-env
+	export $(shell sed '/^\#/d' .env) ; \
 	./mdai-install ekscfg
 
 .PHONY: bootstrap

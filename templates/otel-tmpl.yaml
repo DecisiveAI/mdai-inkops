@@ -3,7 +3,7 @@ kind: OpenTelemetryCollector
 metadata:
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-name: mdai-non-grpc-endpoint
-    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-type: external
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
   name: __template
