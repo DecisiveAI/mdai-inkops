@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as eks from "aws-cdk-lib/aws-eks";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as yaml from "js-yaml";
 import { readFileSync } from "fs";
 import { Construct } from "constructs";
@@ -57,11 +58,15 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       MDAI_UI: {
         NAMESPACE: "default",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6",
+        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6-cognito",
         CHART: "mdai-console",
         RELEASE: "mdai-console",
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
       },
+      MDAI_COGNITO: {
+        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
+        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
+      }
     }
 
     if (config.MDAI_UI.ACM_ARN == undefined) {
@@ -218,7 +223,57 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiApi.node.addDependency(prometheus);
 
-    const mdaiConsole = cluster.addHelmChart("mdai-console", {
+    const mdaiUserPool= new cognito.UserPool(this, 'mdai-user-pool', {
+      userPoolName: 'mdai-user-pool',
+      signInAliases: {
+        email: true,
+      },
+      selfSignUpEnabled: true,
+      autoVerify: {
+        email: true,
+      },
+      userVerification: {
+        emailSubject: 'You need to verify your email',
+        emailBody: 'Thanks for signing up Your verification code is {####}', // # This placeholder is a must if code is selected as preferred verification method
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+      },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    mdaiUserPool.node.addDependency(mdaiApi);
+
+    const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
+      cognitoDomain: {
+        domainPrefix: config.MDAI_COGNITO.USER_POOL_DOMAIN,
+      },
+    });
+
+    const mdaiAppClient = mdaiUserPool.addClient('mdai-app-client', {
+      userPoolClientName: 'mdai-app-client',
+      authFlows: {
+        userPassword: true,
+      },
+      generateSecret: true,
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.EMAIL],
+        callbackUrls: [
+          `https://${config.MDAI_COGNITO.UI_HOSTNAME}/oauth2/idpresponse`,
+        ],
+      },
+    });
+    mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
+
+    const mydecisiveEngineUi = cluster.addHelmChart("mdai-console", {
       chart: config.MDAI_UI.CHART,
       repository: config.MDAI_UI.REPO,
       namespace: config.MDAI_UI.NAMESPACE,
@@ -227,11 +282,17 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       version: config.MDAI_UI.VERSION,
       wait: true,
       values: {
-        env: {
-          ACM_ARN: config.MDAI_UI.ACM_ARN,
+        'ingress': {
+          'userPoolArn': mdaiUserPool.userPoolArn,
+          'userPoolClientId': mdaiAppClient.userPoolClientId,
+          'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
+        },
+        'env': {
+          'MDAI_UI_ACM_ARN': process.env.MDAI_UI_ACM_ARN,
         }
       }
     });
-    mdaiConsole.node.addDependency(mdaiApi);
+    mydecisiveEngineUi.node.addDependency(mdaiAppClient);
+
   }
 }
