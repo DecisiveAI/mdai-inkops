@@ -1,4 +1,5 @@
 # Decisive Engine deployment
+
 сreates an AWS CDK stack that deploys an EKS cluster with the following components:
 
 - AWS Cert-Manager for managing TLS certificates
@@ -8,33 +9,33 @@
 
 ## Deployment steps
 
-* `make config`     configures aws client, cdk stack and Otel CR
-* `make bootstrap`  bootstraps cdk stack deployment
-* `make install`    runs cdk stack deployment
-* `make clean`      cleans up environment, removes log files
+- `make config` configures aws client, cdk stack and Otel CR
+- `make bootstrap` bootstraps cdk stack deployment
+- `make install` runs cdk stack deployment
+- `make clean` cleans up environment, removes log files
 
 ## Destroy stack
 
-* `cdk destroy`
+- `cdk destroy`
 
 ## Useful commands
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+- `npm run build` compile typescript to js
+- `npm run watch` watch for changes and compile
+- `npm run test` perform the jest unit tests
+- `cdk deploy` deploy this stack to your default AWS account/region
+- `cdk diff` compare deployed stack with current state
+- `cdk synth` emits the synthesized CloudFormation template
 
 ## Local Deployment commands
 
-* `make -f ./make/Makefile-local-recipies create-mdai`              deploy a local cluster from scratch
-* `make -f ./make/Makefile-local-recipies delete-mdai`             deletes mdai cluster deployed locally and all artifacts associated
-* `make -f ./make/Makefile-local-recipies delete-mdai-all`             deletes mdai cluster deployed locally and all artifacts associated, plus helm charts
-* `make -f ./make/Makefile-local-recipies update-mdai-collector`              updates mdai the collector to the latest configuration
+- `make -f ./make/Makefile-local-recipes create-mdai` deploy a local cluster from scratch
+- `make -f ./make/Makefile-local-recipes delete-mdai` deletes mdai cluster deployed locally and all artifacts associated
+- `make -f ./make/Makefile-local-recipes delete-mdai-all` deletes mdai cluster deployed locally and all artifacts associated, plus helm charts
+- `make -f ./make/Makefile-local-recipes update-mdai-collector` updates mdai the collector to the latest configuration
 
+_Make sure to update your `.bashrc` or `.zshrc` file with the following:_
 
-*Make sure to update your `.bashrc` or `.zshrc` file with the following:*
 ```@bash
 export GOBIN=${GOBIN:-$(go env GOPATH)/bin}
 ```

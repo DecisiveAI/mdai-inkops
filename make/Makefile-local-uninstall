@@ -6,30 +6,30 @@
 .SILENT: delete-mdai-config
 .PHONY: delete-mdai-config
 delete-mdai-config:
-  kubectl delete -f ./templates/otel-collector.yaml --ignore-not-found=true
+	kubectl delete -f./templates/otel-collector.yaml --ignore-not-found=true
 
 # delete cluster
 .SILENT: delete-mdai-cluster
 .PHONY: delete-mdai-cluster
 delete-mdai-cluster:
-  kind delete cluster --name mdai-local
+	kind delete cluster --name mdai-local
 
 # uninstall helm releases
 .SILENT: uninstall-helm-releases
 .PHONY: uninstall-helm-releases
 uninstall-helm-releases:
-  helm uninstall mdai-console mdai-api prometheus opentelemetry-operator
+	helm uninstall mdai-console mdai-api prometheus opentelemetry-operator
 
 # uninstall helm chart repos
 .SILENT: uninstall-helm-artifacts
 .PHONY: uninstall-helm-artifacts
 uninstall-helm-artifacts:
 # todo: need to figure out how to try/catch and move on
-  @echo "Executing uninstall-helm-artifact..."
-  helm repo remove open-telemetry
-  helm repo remove prometheus-community
-  helm repo remove mydecisive
-  @echo "Successfully ran uninstall-helm-artifact!"
+	@echo "Executing uninstall-helm-artifact..."
+	helm repo remove open-telemetry
+	helm repo remove prometheus-community
+	helm repo remove mydecisive
+	@echo "Successfully ran uninstall-helm-artifact!"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~ LOCAL UNINSTALL RECIPIE ~~~~~~~~~~~~~~~~~~~

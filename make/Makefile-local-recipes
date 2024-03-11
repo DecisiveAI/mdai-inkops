@@ -1,0 +1,29 @@
+# ~~~~~~~~~~~~~~~~~ RECIPES ~~~~~~~~~~~~~~~~~
+
+.SILENT: create-mdai
+.PHONY: create-mdai
+create-mdai:
+	@echo "🏁 Create MDAI Engine started..."
+	@time $(MAKE) -f ./make/Makefile-local-install install-all
+	@echo "🐙 Create MDAI Engine completed successfully!"
+
+.SILENT: delete-mdai
+.PHONY: delete-mdai
+delete-mdai:
+	@echo "🐙 Destroy MDAI Engine started..."
+	@$(MAKE) -f ./make/Makefile-local-uninstall uninstall-all
+	@echo "🪦 Destroy MDAI Engine completed successfully!"
+
+.SILENT: delete-mdai-all
+.PHONY: delete-mdai-all
+delete-mdai-all:
+	@echo "🐙 Destroy MDAI Engine started..."
+	@$(MAKE) -f ./make/Makefile-local-uninstall uninstall-all-artifacts
+	@echo "🪦 Destroy MDAI Engine completed successfully!"
+
+.SILENT: update-mdai-collector
+.PHONY: update-mdai-collector
+update-mdai-collector:
+	@echo "🐙 Update started"
+	kubectl apply -f ./templates/otel-collector.yaml
+	@echo "🐙 Update done"
