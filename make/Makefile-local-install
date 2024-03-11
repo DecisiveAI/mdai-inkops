@@ -1,0 +1,82 @@
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~ LOCAL DIST INSTALL SCRIPTS ~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~ INSTALL DEPENDENCY SCRIPT ~~~~~~~~~~~~~~
+
+# Install system requirements for MDAI
+# .SILENT: mdai-system-reqs
+.PHONY: mdai-system-reqs
+mdai-system-reqs:
+  @echo "🟢 Start mdai-system-reqs..."
+  @go version || brew list go || brew install go \
+  kubectl version || brew list kubectl || brew install kubectl \
+  npm -v || brew list npm || brew install npm \
+  cdk version ||brew list aws-cdk || brew install aws-cdk \
+  docker -v || brew list --cask docker || brew install --cask docker \
+  docker pull otel/opentelemetry-collector:0.95.0 \
+  helm version || brew list helm || brew install helm \
+  kind version || brew list kind || brew install kind
+  @echo "✅ Complete mdai-system-reqs!"
+
+# Add helm chart repos available on system / machine
+# .SILENT: mdai-add-helm-charts
+.PHONY: mdai-add-helm-charts
+mdai-add-helm-charts:
+  @echo "🟢 Start mdai-add-helm-charts..."
+  @helm repo list | grep prometheus-community || helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  @helm repo list | grep open-telemetry || helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+  @helm repo list | grep mydecisive || helm repo add mydecisive https://decisiveai.github.io/mdai-helm-charts
+  @echo "✅ Complete mdai-add-helm-charts!"
+
+
+# Install helm charts to cluster
+.SILENT: mdai-install-helm-charts
+.PHONY: mdai-install-helm-charts
+mdai-install-helm-charts:
+  @echo "🟢 Start mdai-install-helm-charts..."
+  helm repo update
+  helm upgrade -f ./templates/prometheus_values.yaml prometheus prometheus-community/prometheus  --install --wait
+  helm upgrade opentelemetry-operator open-telemetry/opentelemetry-operator --install --set admissionWebhooks.certManager.enabled=false --set admissionWebhooks.certManager.autoGenerateCert=true --wait
+  helm upgrade mdai-api mydecisive/mdai-api --version 0.0.3 --install
+  helm upgrade mdai-console mydecisive/mdai-console --version 0.0.6 --install
+  @echo "✅ Complete mdai-install-helm-charts!"
+
+# ~~~~~~~~~~~~~~~~~ CREATE ACTION RULES ~~~~~~~~~~~~~~~~~
+
+# Creates a cluster for an MDAI engine to be created
+.SILENT: create-mdai-cluster
+.PHONY: create-mdai-cluster
+create-mdai-cluster:
+  @kind get clusters | grep -q mdai-local || kind create cluster --name mdai-local
+  kubectl cluster-info --context kind-mdai-local
+
+# Creates a cluster for an MDAI engine to be created
+.SILENT: mdai-install-cluster-dependencies
+.PHONY: mdai-install-cluster-dependencies
+mdai-install-cluster-dependencies: \
+  mdai-system-reqs mdai-add-helm-charts mdai-install-helm-charts
+
+# wait for required pods to be installed
+.SILENT: mdai-wait-for-pods
+.PHONY: mdai-wait-for-pods
+mdai-wait-for-pods:
+  @echo "🟢 Start mdai-wait-for-pods..."
+  kubectl -n default wait --for condition=ready pod -l app.kubernetes.io/name=opentelemetry-operator
+  kubectl -n default wait --for condition=ready pod -l app.kubernetes.io/component=controller-manager
+  @echo "✅ Complete mdai-wait-for-pods!"
+
+# deploy collector config
+.SILENT: mdai-deploy-config
+.PHONY: mdai-deploy-config
+mdai-deploy-config:
+  kubectl apply -f ./templates/otel-collector.yaml
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~ LOCAL INSTALL RECIPE ~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.SILENT: install-all
+.PHONY: install-all
+install-all: create-mdai-cluster mdai-install-cluster-dependencies mdai-wait-for-pods mdai-deploy-config

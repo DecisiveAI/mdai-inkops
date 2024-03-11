@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: telemetrygen-logs
 spec:
-  # Change this to the frequency you desire -- currently it's set to 5 minutes
+  # Change this to the frequency you desire -- currently it's set to 1 minutes
   schedule: "*/1 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
