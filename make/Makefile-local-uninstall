@@ -18,7 +18,7 @@ delete-mdai-cluster:
 .SILENT: uninstall-helm-releases
 .PHONY: uninstall-helm-releases
 uninstall-helm-releases:
-	helm uninstall mdai-console mdai-api prometheus opentelemetry-operator
+	helm uninstall mdai-console mdai-api prometheus opentelemetry-operator --ignore-not-found
 
 # uninstall helm chart repos
 .SILENT: uninstall-helm-artifacts
