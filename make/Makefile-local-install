@@ -25,7 +25,7 @@ mdai-system-reqs:
 mdai-add-helm-charts:
 	@echo "🟢 Start mdai-add-helm-charts..."
 	@helm repo list | grep prometheus-community || helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-	@helm repo list | grep open-telemetry || helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+	@helm repo list | grep open-telemetry || helm repo add open-telemetry https://decisiveai.github.io/mdai-helm-charts
 	@helm repo list | grep mydecisive || helm repo add mydecisive https://decisiveai.github.io/mdai-helm-charts
 	@echo "✅ Complete mdai-add-helm-charts!"
 
@@ -36,7 +36,7 @@ mdai-install-helm-charts:
 	@echo "🟢 Start mdai-install-helm-charts..."
 	helm repo update
 	helm upgrade -f ./templates/prometheus-values.yaml prometheus prometheus-community/prometheus --install --wait
-	helm upgrade opentelemetry-operator open-telemetry/opentelemetry-operator --install --set admissionWebhooks.certManager.enabled=false --set admissionWebhooks.certManager.autoGenerateCert=true --wait
+	helm upgrade opentelemetry-operator open-telemetry/opentelemetry-operator --install --set admissionWebhooks.certManager.enabled=false --set admissionWebhooks.certManager.autoGenerateCert=true --wait --set manager.image.repository=public.ecr.aws/p3k6k6h3/opentelemetry-operator --set manager.image.tag=latest --version 0.43.1
 	helm upgrade mdai-api mydecisive/mdai-api --version 0.0.3 --install
 	helm upgrade mdai-console mydecisive/mdai-console --version 0.0.6 --install
 	@echo "✅ Complete mdai-install-helm-charts!"
@@ -69,7 +69,7 @@ mdai-wait-for-pods:
 .SILENT: mdai-deploy-config
 .PHONY: mdai-deploy-config
 mdai-deploy-config:
-	kubectl apply -f ./templates/otel-collector.yaml
+	kubectl apply -f ./lib/otelcol.yaml
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ LOCAL INSTALL RECIPE ~~~~~~~~~~~~~~~~~~~~

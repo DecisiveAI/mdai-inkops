@@ -29,10 +29,10 @@
 
 ## Local Deployment commands
 
-- `make -f ./make/Makefile-local-recipes create-mdai` deploy a local cluster from scratch
-- `make -f ./make/Makefile-local-recipes delete-mdai` deletes mdai cluster deployed locally and all artifacts associated
-- `make -f ./make/Makefile-local-recipes delete-mdai-all` deletes mdai cluster deployed locally and all artifacts associated, plus helm charts
-- `make -f ./make/Makefile-local-recipes update-mdai-collector` updates mdai the collector to the latest configuration
+- `make create-mdai` deploy a local cluster from scratch
+- `make delete-mdai` deletes mdai cluster deployed locally and all artifacts associated
+- `make delete-mdai-all` deletes mdai cluster deployed locally and all artifacts associated, plus helm charts
+- `make update-mdai-collector` updates mdai the collector to the latest configuration
 
 _Make sure to update your `.bashrc` or `.zshrc` file with the following:_
 
