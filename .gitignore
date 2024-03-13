@@ -17,6 +17,8 @@ cdk-output.json
 .idea/vcs.xml
 .idea/workspace.xml
 
-values/
+lib/*
+values/*
+
 
 .DS_Store

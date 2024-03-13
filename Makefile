@@ -126,8 +126,9 @@ install: npm-init bootstrap cdk kubectl-config set-role-map
 .PHONY: cert
 .SILENT: cert
 cert:
-	ACM_ARN=$(shell openssl req -new -x509 -sha256 -nodes -newkey rsa:2048 -keyout /tmp/private_mdai.key -out /tmp/certificate_mdai.crt -subj "/CN=${MDAI_UI_HOSTNAME}" && \
-	aws acm import-certificate --region ${AWS_REGION} --certificate fileb:///tmp/certificate_mdai.crt --private-key fileb:///tmp/private_mdai.key --output text) ; \
+	@ACM_ARN=$(shell openssl req -new -x509 -sha256 -nodes -newkey rsa:2048 -keyout /tmp/private_mdai.key -out /tmp/certificate_mdai.crt -subj "/CN=${MDAI_UI_HOSTNAME}" && \
+	aws acm import-certificate --region ${AWS_REGION} --profile ${AWS_PROFILE} --certificate fileb:///tmp/certificate_mdai.crt --private-key fileb:///tmp/private_mdai.key --output text) ; \
 	grep -v "MDAI_UI_ACM_ARN" .env > .env.tmp && mv .env.tmp .env; \
 	echo "MDAI_UI_ACM_ARN=$${ACM_ARN}" >> .env; \
+	echo "Copy your cert's ARN for your records: $${ACM_ARN}"
 	rm -f /tmp/certificate_mdai.crt /tmp/private_mdai.key
