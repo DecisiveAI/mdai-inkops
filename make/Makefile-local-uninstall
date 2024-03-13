@@ -6,7 +6,7 @@
 .SILENT: delete-mdai-config
 .PHONY: delete-mdai-config
 delete-mdai-config:
-	kubectl delete -f./templates/otel-collector.yaml --ignore-not-found=true
+	kubectl delete -f ./lib/otelcol.yaml --ignore-not-found=true
 
 # delete cluster
 .SILENT: delete-mdai-cluster

@@ -25,5 +25,5 @@ delete-mdai-all:
 .PHONY: update-mdai-collector
 update-mdai-collector:
 	@echo "🐙 Update started"
-	kubectl apply -f ./templates/otel-collector.yaml
+	kubectl apply -f ./lib/otelcol.yaml
 	@echo "🐙 Update done"

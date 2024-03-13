@@ -48,6 +48,6 @@ serverFiles:
           regex: opentelemetry-collector;true
           action: keep
         - source_labels: [__address__]
-          regex: '.*:(431[78])'
+          regex: '.*:(431[78]|14250)'
           action: drop
 
