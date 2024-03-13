@@ -3,6 +3,7 @@ kind: CronJob
 metadata:
   name: telemetrygen-traces
 spec:
+  # Change this to the frequency you desire -- currently it's set to 5 minutes
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
