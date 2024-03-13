@@ -3,6 +3,8 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
+include make/Makefile-local-recipes
+
 .EXPORT_ALL_VARIABLES:
 # parameters values
 PARAMS_AWS_FILE=values/aws.env
