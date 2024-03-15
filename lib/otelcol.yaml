@@ -82,5 +82,9 @@ spec:
               receivers: [hostmetrics, otlp]
               processors: [batch]
               exporters: [debug]
+            logs:
+              receivers: [otlp]
+              processors: [batch]
+              exporters: [debug]
 apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
