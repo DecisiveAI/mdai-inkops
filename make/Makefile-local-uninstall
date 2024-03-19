@@ -26,7 +26,6 @@ uninstall-helm-releases:
 uninstall-helm-artifacts:
 # todo: need to figure out how to try/catch and move on
 	@echo "Executing uninstall-helm-artifact..."
-	helm repo remove open-telemetry
 	helm repo remove prometheus-community
 	helm repo remove mydecisive
 	@echo "Successfully ran uninstall-helm-artifact!"
