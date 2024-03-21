@@ -37,3 +37,7 @@ service:
       receivers: [hostmetrics, otlp]
       processors: [batch]
       exporters: [debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
