@@ -12,7 +12,7 @@ spec:
         args:
         - "logs"
         - "--otlp-endpoint"
-        - "10.244.0.8:4318"
+        - "test-collector-collector:4318"
         - "--otlp-insecure"
         - "true"
         - "--otlp-http"
