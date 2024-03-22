@@ -228,7 +228,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       signInAliases: {
         email: true,
       },
-      selfSignUpEnabled: true,
+      selfSignUpEnabled: false,
       autoVerify: {
         email: true,
       },
