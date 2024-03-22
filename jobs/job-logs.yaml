@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-log-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: telemetrygen
+        image: public.ecr.aws/p3k6k6h3/telemetrygen:current
+        imagePullPolicy: IfNotPresent
+        args:
+        - "logs"
+        - "--otlp-endpoint"
+        - "test-collector-collector:4318"
+        - "--otlp-insecure"
+        - "true"
+        - "--otlp-http"
+        - "--logs"
+        - "50"
+      restartPolicy: Never
+  backoffLimit: 4
