@@ -1,6 +1,9 @@
 # Decisive Engine deployment
 
-сreates an AWS CDK stack that deploys an EKS cluster with the following components:
+>❗**Disclaimer: Pre-Alpha Project** This open-source project is currently under construction and is subject to frequent changes and updates. For more information about our pre-alpha release, see our [Pre-Alpha Disclaimer](./DISCLAIMER.md)
+
+
+Creates an AWS CDK stack that deploys an EKS cluster with the following components:
 
 - AWS Cert-Manager for managing TLS certificates
 - OpenTelemetry Operator for deploying the OpenTelemetry Collector
