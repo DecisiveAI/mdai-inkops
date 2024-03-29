@@ -3,11 +3,13 @@ allow_k8s_contexts('kind-mdai-local')
 
 load('ext://helm_remote', 'helm_remote')
 
+# install mdai otel-operator fork
 helm_remote('opentelemetry-operator',
             repo_name='opentelemetry',
             repo_url='https://decisiveai.github.io/mdai-helm-charts',
             set=['admissionWebhooks.certManager.enabled=false',
                  'admissionWebhooks.certManager.autoGenerateCert=true',
+                 'manager.leaderElection.enabled=false',
                  'manager.image.repository=public.ecr.aws/p3k6k6h3/opentelemetry-operator',
                  'manager.image.tag=latest'],
             version='0.43.1')
@@ -23,7 +25,7 @@ k8s_yaml('lib/otelcol.yaml')
 # depend on by the test-collector so it starts after it
 local_resource(
   name='verify-collector-operator',
-  cmd='kubectl wait --for=condition=Available --timeout=300s -n default deployment/opentelemetry-operator',
+  cmd='kubectl wait --for=condition=Available --timeout=30s -n default deployment/opentelemetry-operator',
   resource_deps=['opentelemetry-operator'],
   labels=['opentelemetry-operator']
 )
@@ -36,6 +38,7 @@ k8s_resource(
 )
 
 
+# install prometheus chart
 helm_remote('prometheus',
             repo_name='prometheus-community',
             repo_url='https://prometheus-community.github.io/helm-charts',
@@ -54,41 +57,32 @@ k8s_resource(
 )
 
 
+# To test helm chart releases use these helm_remote functions
 # helm_remote('mdai-api', repo_name='mydecisive', repo_url='https://decisiveai.github.io/mdai-helm-charts')
 # helm_remote('mdai-console', repo_name='mydecisive', repo_url='https://decisiveai.github.io/mdai-helm-charts')
 
-yaml = helm('../mdai-api/deployment/',
-            # The release name, equivalent to helm --name
-            name='mdai-api',
-            # The namespace to install in, equivalent to helm --namespace
-            namespace='default',
-            # The values file to substitute into the chart.
-            values=['../mdai-api/deployment/values.yaml']
-            # Values to set from the command-line
-            # set=['service.port=1234', 'ingress.enabled=true']
-            )
-k8s_yaml(yaml)
+api_yaml = helm('../mdai-api/deployment/',
+                name='mdai-api',
+                namespace='default',
+                values=['../mdai-api/deployment/values.yaml']
+                )
+k8s_yaml(api_yaml)
 k8s_resource(
   workload='mdai-api',
   resource_deps=['prometheus-server'],
   labels='backend'
 )
 
-yaml = helm('../mdai-console/deployment/',
-            # The release name, equivalent to helm --name
-            name='mdai-console',
-            # The namespace to install in, equivalent to helm --namespace
-            namespace='default',
-            # The values file to substitute into the chart.
-            values=['../mdai-console/deployment/values.yaml']
-            # Values to set from the command-line
-            # set=['service.port=1234', 'ingress.enabled=true']
-            )
-k8s_yaml(yaml)
+console_yaml = helm('../mdai-console/deployment/',
+                    name='mdai-console',
+                    namespace='default',
+                    values=['../mdai-console/deployment/values.yaml']
+                    )
+k8s_yaml(console_yaml)
 k8s_resource(
-  workload='mdai-console',
-  port_forwards=[
-    port_forward(5555, 5173, 'mdai-console')
-  ],
-  labels=['frontend']
+    workload='mdai-console',
+    port_forwards=[
+        port_forward(5555, 5173, 'mdai-console')
+    ],
+    labels=['frontend']
 )
