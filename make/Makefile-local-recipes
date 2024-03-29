@@ -7,6 +7,13 @@ create-mdai:
 	@time $(MAKE) -f ./make/Makefile-local-install install-all
 	@echo "🐙 Create MDAI Engine completed successfully!"
 
+.SILENT: create-mdai-semi-auto
+.PHONY: create-mdai-semi-auto
+create-mdai-semi-auto:
+	@echo "🏁 Create MDAI Engine: Semi-auto started..."
+	@time $(MAKE) -f ./make/Makefile-local-install install-all-semi-auto
+	@echo "🐙 Create MDAI Engine: Semi-auto completed successfully!"
+
 .SILENT: delete-mdai
 .PHONY: delete-mdai
 delete-mdai:
