@@ -1,5 +1,5 @@
 # DISCLAIMER
-This pre-alpha release is an early an early version of our open source solution and is intended for testing and feedback purposes only. Please note that there are many changes and enhancements planned for future iterations, and the current version represents just the initial phase of development.
+This pre-alpha release is an early version of our open source solution and is intended for testing and feedback purposes only. Please note that there are many changes and enhancements planned for future iterations, and the current version represents just the initial phase of development.
 
 ## Primary Functionality:
 The primary functionality of this pre-alpha release is an installer for cloud-based telemetry pipelines running specifically in AWS environments. The installer is designed to facilitate the setup and provisioning of telemetry pipelines, allowing users to quickly deploy and configure the necessary components for monitoring and data collection.
