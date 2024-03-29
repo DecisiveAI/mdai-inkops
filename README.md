@@ -1,6 +1,11 @@
 # Decisive Engine deployment
 
-сreates an AWS CDK stack that deploys an EKS cluster with the following components:
+## ⚠️ **Pre-Alpha Disclaimer**
+This open-source project is currently under construction and is subject to frequent changes and updates. For more information about our pre-alpha release, see our [Pre-Alpha Disclaimer](./DISCLAIMER.md)
+
+----
+
+Creates an AWS CDK stack that deploys an EKS cluster with the following components:
 
 - AWS Cert-Manager for managing TLS certificates
 - OpenTelemetry Operator for deploying the OpenTelemetry Collector
@@ -38,3 +43,11 @@ _Make sure to update your `.bashrc` or `.zshrc` file with the following:_
 ```@bash
 export GOBIN=${GOBIN:-$(go env GOPATH)/bin}
 ```
+
+----
+
+## 🚀 Coming Soon - Roadmap
+
+We understand you may be curious about what we're working on next. We're hard at work planning out our next few phases of development. We will soon be posting a roadmap that will include exciting features and improvements that we have high hopes you will love! 
+
+🍿 Stay tuned for updates and announcements.
