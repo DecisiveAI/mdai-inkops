@@ -4,92 +4,43 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as yaml from "js-yaml";
+import * as path from "path";
 import { readFileSync } from "fs";
 import { Construct } from "constructs";
 import { KubectlV28Layer } from "@aws-cdk/lambda-layer-kubectl-v28";
-import * as path from "path";
-import 'dotenv/config'
 
 export class DecisiveEngineAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const config = {
-      CLUSTER: {
-        NAME: "DecisiveEngineCluster",
-        CAPACITY: Number(process.env.MDAI_CLUSTER_CAPACITY) || 10,
-        INSTANCE: {
-          CLASS: Object.values(ec2.InstanceClass).find(instanceClass => instanceClass === process.env.MDAI_EC2_INSTANCE_CLASS) || ec2.InstanceClass.T2 as ec2.InstanceClass,
-          SIZE: Object.values(ec2.InstanceSize).find(instanceSize => instanceSize === process.env.MDAI_EC2_INSTANCE_SIZE) || ec2.InstanceSize.MICRO as ec2.InstanceSize,
-        },
-      },
-      CERT_MANAGER: {
-        NAMESPACE: "cert-manager",
-        REPO: "https://charts.jetstack.io",
-        VERSION: process.env.MDAI_CERT_MANAGER_VERSION || "1.13.1",
-        CHART: "cert-manager",
-        RELEASE: "cert-manager",
-      },
-      OTEL_OPERATOR: {
-        NAMESPACE: "opentelemetry-operator-system",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_OTEL_OPERATOR_VERSION || "0.43.1",
-        CHART: "opentelemetry-operator",
-        RELEASE: "opentelemetry-operator",
-        MANAGER: {
-          REPO: process.env.MDAI_OTEL_OPERATOR_MANAGER_REPO || "public.ecr.aws/p3k6k6h3/opentelemetry-operator",
-          VERSION: process.env.MDAI_OTEL_OPERATOR_MANAGER_VERSION || "latest",
-        },
-      },
-      PROMETHEUS: {
-        NAMESPACE: "default",
-        REPO: "https://prometheus-community.github.io/helm-charts",
-        VERSION: process.env.MDAI_PROMETHEUS_VERSION || "25.11.0",
-        CHART: "prometheus",
-        RELEASE: "prometheus",
-      },
-      MDAI_API: {
-        NAMESPACE: "default",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_API_VERSION || "0.0.3",
-        CHART: "mdai-api",
-        RELEASE: "mdai-api",
-      },
-      MDAI_UI: {
-        NAMESPACE: "default",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6-cognito",
-        CHART: "mdai-console",
-        RELEASE: "mdai-console",
-        ACM_ARN: process.env.MDAI_UI_ACM_ARN,
-      },
-      MDAI_COGNITO: {
-        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
-        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
-      }
-    }
-
-    if (config.MDAI_UI.ACM_ARN == undefined) {
-      throw new Error("MDAI_UI_ACM_ARN was not specified")
-    }
+    const defaults = scope.node.tryGetContext('defaults');
 
     const engineMasterRole = new iam.Role(this, "DecisiveEngineMasterRole", {
       assumedBy: new iam.AccountRootPrincipal(),
     });
 
-    const cluster = new eks.Cluster(this, config.CLUSTER.NAME, {
-      version: eks.KubernetesVersion.V1_28,
+    const cluster = new eks.Cluster(this, defaults.cluster.name, {
+      version: eks.KubernetesVersion.V1_29,
       kubectlLayer: new KubectlV28Layer(this, "kubectl"),
       mastersRole: engineMasterRole,
-      defaultCapacity: config.CLUSTER.CAPACITY,
-      defaultCapacityInstance: ec2.InstanceType.of(
-        config.CLUSTER.INSTANCE.CLASS,
-        config.CLUSTER.INSTANCE.SIZE,
-      ),
-      // AWS ALB contoller
+      defaultCapacity: 0,
       albController: {
         version: eks.AlbControllerVersion.V2_6_2,
       },
+      tags: {
+        Creator: require('os').userInfo().username,
+      }
+    });
+
+    cluster.addNodegroupCapacity('BottlerocketNG', {
+      amiType: eks.NodegroupAmiType.BOTTLEROCKET_X86_64,
+      desiredSize: defaults.cluster.capacity,
+      minSize: defaults.cluster.capacity,
+      instanceTypes: [ec2.InstanceType.of(
+        defaults.cluster.instance.class,
+        defaults.cluster.instance.size,
+      )],
+      capacityType: eks.CapacityType.SPOT,
     });
 
     // From: https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions
@@ -160,70 +111,62 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         "https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions",
     });
 
-    const certManager = cluster.addHelmChart("certManager", {
-      chart: config.CERT_MANAGER.CHART,
-      repository: config.CERT_MANAGER.REPO,
-      namespace: config.CERT_MANAGER.NAMESPACE,
-      createNamespace: true,
-      release: config.CERT_MANAGER.RELEASE,
-      version: config.CERT_MANAGER.VERSION,
-      wait: true,
-      values: {
-        installCRDs: true
-      },
-    });
-
     const otelOperator = cluster.addHelmChart("otelOperator", {
-      chart: config.OTEL_OPERATOR.CHART,
-      repository: config.OTEL_OPERATOR.REPO,
-      namespace: config.OTEL_OPERATOR.NAMESPACE,
+      chart: defaults.otel_operator.chart,
+      repository: defaults.otel_operator.repo,
+      namespace: defaults.otel_operator.namespace,
       createNamespace: true,
-      release: config.OTEL_OPERATOR.RELEASE,
-      version: config.OTEL_OPERATOR.VERSION,
+      release: defaults.otel_operator.release,
+      version: defaults.otel_operator.version,
       wait: true,
       values: {
         admissionWebhooks: {
           certManager: {
+            enabled: false,
+          },
+          autoGenerateCert: {
             enabled: true,
           },
         },
+        leaderElection: {
+          enabled: false,
+        },
         manager: {
           image: {
-            repository: config.OTEL_OPERATOR.MANAGER.REPO,
-            tag: config.OTEL_OPERATOR.MANAGER.VERSION,
+            repository: defaults.otel_operator.manager.repo,
+            tag: defaults.otel_operator.manager.version,
           },
         },
       },
     });
-    otelOperator.node.addDependency(certManager);
 
     const collectorCrManifest = yaml.load(readFileSync(path.join(__dirname, "otelcol.yaml"), { encoding: "utf-8" })) as Record<string, any>;
     cluster.addManifest("collectorCrManifest", collectorCrManifest).node.addDependency(otelOperator);
 
     const prometheus = cluster.addHelmChart("prometheus", {
-      chart: config.PROMETHEUS.CHART,
-      repository: config.PROMETHEUS.REPO,
-      namespace: config.PROMETHEUS.NAMESPACE,
+      chart: defaults.prometheus.chart,
+      repository: defaults.prometheus.repo,
+      namespace: defaults.prometheus.namespace,
       createNamespace: true,
-      release: config.PROMETHEUS.RELEASE,
-      version: config.PROMETHEUS.VERSION,
+      release: defaults.prometheus.release,
+      version: defaults.prometheus.version,
       wait: true,
       values: yaml.load(readFileSync(path.join(__dirname, "../templates/prometheus-values.yaml"), "utf8")) as Record<string, any>,
     });
     prometheus.node.addDependency(otelOperator);
 
     const mdaiApi = cluster.addHelmChart("mdai-api", {
-      chart: config.MDAI_API.CHART,
-      repository: config.MDAI_API.REPO,
-      namespace: config.MDAI_API.NAMESPACE,
+      chart: defaults.mdai_api.chart,
+      repository: defaults.mdai_api.repo,
+      namespace: defaults.mdai_api.namespace,
       createNamespace: true,
-      release: config.MDAI_API.RELEASE,
-      version: config.MDAI_API.VERSION,
+      release: defaults.mdai_api.release,
+      version: defaults.mdai_api.version,
       wait: true,
     });
     mdaiApi.node.addDependency(prometheus);
 
-    const mdaiUserPool= new cognito.UserPool(this, 'mdai-user-pool', {
+    const mdaiUserPool = new cognito.UserPool(this, 'mdai-user-pool', {
       userPoolName: 'mdai-user-pool',
       signInAliases: {
         email: true,
@@ -251,7 +194,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
       cognitoDomain: {
-        domainPrefix: config.MDAI_COGNITO.USER_POOL_DOMAIN,
+        domainPrefix: defaults.mdai_cognito.user_pool_domain,
       },
     });
 
@@ -267,32 +210,29 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         },
         scopes: [cognito.OAuthScope.EMAIL],
         callbackUrls: [
-          `https://${config.MDAI_COGNITO.UI_HOSTNAME}/oauth2/idpresponse`,
+          `https://${defaults.mdai_cognito.ui_hostname}/oauth2/idpresponse`,
         ],
       },
     });
     mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
 
-    const mydecisiveEngineUi = cluster.addHelmChart("mdai-console", {
-      chart: config.MDAI_UI.CHART,
-      repository: config.MDAI_UI.REPO,
-      namespace: config.MDAI_UI.NAMESPACE,
+    const mdaiConsole = cluster.addHelmChart("mdai-console", {
+      chart: defaults.mdai_console.chart,
+      repository: defaults.mdai_console.repo,
+      namespace: defaults.mdai_console.namespace,
       createNamespace: true,
-      release: config.MDAI_UI.RELEASE,
-      version: config.MDAI_UI.VERSION,
+      release: defaults.mdai_console.release,
+      version: defaults.mdai_console.version,
       wait: true,
       values: {
         'ingress': {
           'userPoolArn': mdaiUserPool.userPoolArn,
           'userPoolClientId': mdaiAppClient.userPoolClientId,
-          'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
+          'userPoolDomain': defaults.mdai_cognito.user_pool_domain,
+          'acmArn': process.env.MDAI_UI_ACM_ARN,
         },
-        'env': {
-          'MDAI_UI_ACM_ARN': process.env.MDAI_UI_ACM_ARN,
-        }
       }
     });
-    mydecisiveEngineUi.node.addDependency(mdaiAppClient);
-
+    mdaiConsole.node.addDependency(mdaiAppClient);
   }
 }
