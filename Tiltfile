@@ -46,9 +46,6 @@ helm_remote('prometheus',
 
 k8s_resource(
   workload='prometheus-server',
-  port_forwards=[
-    port_forward(9090, 9090, 'prometheus-server')
-  ],
   labels=['prometheus']
 )
 k8s_resource(
