@@ -9,6 +9,7 @@ import { Construct } from "constructs";
 import { KubectlV28Layer } from "@aws-cdk/lambda-layer-kubectl-v28";
 import * as path from "path";
 import 'dotenv/config'
+import {CfnJson} from "aws-cdk-lib/core/lib";
 
 export class DecisiveEngineAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -66,7 +67,10 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       MDAI_COGNITO: {
         UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
         USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
-      }
+      },
+      KARPENTER: {
+        AWS_PARTITION: process.env.AWS_PARTITION || "aws",
+      },
     }
 
     if (config.MDAI_UI.ACM_ARN == undefined) {
@@ -293,6 +297,43 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       }
     });
     mydecisiveEngineUi.node.addDependency(mdaiAppClient);
+
+    // Karpenter
+    const karpenterNodeRole = new iam.Role(
+        this,
+        'KarpenterNodeRole-' + config.CLUSTER.NAME, {
+          assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+          managedPolicies:  [
+            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
+            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
+          ],
+        });
+
+    // const karpenterInstanceProfile = new iam.InstanceProfile(
+    //     this,
+    //    'KarpenterNodeInstanceProfile',  {
+    //       instanceProfileName: 'KarpenterNodeInstanceProfile',
+    //       role: karpenterNodeRole,
+    // });
+
+
+    const conditions = new CfnJson(this, 'ConditionJson', {
+      value: {
+        [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
+        [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:karpenter`,
+      },
+    });
+
+    const KarpenterControllerRole = new iam.Role(
+        this,
+        'KarpenterControllerRole-' + config.CLUSTER.NAME, {
+          assumedBy: new iam.FederatedPrincipal(`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
+            'StringEquals': conditions
+          },
+          'sts:AssumeRoleWithWebIdentity')}
+    )
 
   }
 }

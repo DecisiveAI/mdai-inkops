@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
 )
 
 type MapRole struct {
@@ -40,8 +43,14 @@ func addRoleMapping(roleArn string) error {
 
 	var mapRoles []MapRole
 
-	if err = json.Unmarshal(mapRolesBytes, &mapRoles); err != nil {
-		return err
+	errJson := json.Unmarshal(mapRolesBytes, &mapRoles)
+
+	if errJson != nil {
+		errYaml := yaml.Unmarshal(mapRolesBytes, &mapRoles)
+		if errYaml != nil {
+			err = fmt.Errorf("failed to unmarshal mapRoles: json error: %v, yaml error: %v", errJson.Error(), errYaml.Error())
+			return err
+		}
 	}
 
 	found := false
@@ -52,6 +61,7 @@ func addRoleMapping(roleArn string) error {
 				Groups:   []string{"system:masters"},
 			}
 			found = true
+			break
 		}
 	}
 	if !found {
