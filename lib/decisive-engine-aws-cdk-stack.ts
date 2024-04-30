@@ -71,6 +71,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       KARPENTER: {
         ENABLE: process.env.KARPENTER || 'true',
         AWS_PARTITION: process.env.AWS_PARTITION || 'aws',
+        NAMESPACE: 'kube-system'
       },
     }
 
@@ -332,7 +333,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       const conditions = new CfnJson(this, 'ConditionJson', {
         value: {
           [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
-          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:karpenter`,
+          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:${config.KARPENTER.NAMESPACE}:karpenter`,
         },
       });
 
