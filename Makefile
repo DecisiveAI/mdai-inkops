@@ -21,6 +21,9 @@ KUBECTL_CFG_CMD=kubectl-cfg-command
 TMPL_RESOLVER_AWS_CDK=resolve_aws_templates.go
 TMPL_RESOLVER_OTEL=resolve_otel_templates.go
 
+KARPENTER_VERSION=0.36.1
+KARPENTER_NAMESPACE=kube-system
+
 .PHONY: build
 .SILENT: build
 build: mdai-install
@@ -123,7 +126,12 @@ realclean:
 
 .PHONY: install
 .SILENT: install
+ifeq ($(KARPENTER),true)
+install: npm-init bootstrap cdk kubectl-config set-role-map karpenter
+else
 install: npm-init bootstrap cdk kubectl-config set-role-map
+endif
+
 
 .PHONY: cert-gen
 .SILENT: cert-gen
@@ -140,3 +148,40 @@ cert-gen: config-aws
 .PHONY: cert
 .SILENT: cert
 cert: cert-gen config
+
+
+.PHONY: karpenter
+.SILENT: karpenter
+karpenter: karpenter-tag-sg
+	@echo running $@, installing Karpenter
+
+
+.PHONY: karpenter-tag-sg
+karpenter-tag-sg:
+	@SECURITY_GROUPS=$(shell aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --profile ${AWS_PROFILE}) && \
+	aws ec2 create-tags --tags "Key=karpenter.sh/discovery,Value=${MDAI_CLUSTER_NAME}" --resources $${SECURITY_GROUPS} --profile ${AWS_PROFILE}
+
+.PHONY: karpenter-update-aws-auth
+karpenter-update-aws-auth:
+	eksctl create iamidentitymapping  --cluster DecisiveEngineCluster --username system:node:{{EC2PrivateDNSName}} \
+	--group system:bootstrappers,system:nodes --arn arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterNodeRole-${MDAI_CLUSTER_NAME} \
+	--profile ${AWS_PROFILE}
+
+.PHONY: karpenter-crd
+karpenter-crd:
+	kubectl create namespace "${KARPENTER_NAMESPACE}" || true
+	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodepools.yaml"
+	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml"
+	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
+
+.PHONY: karpenter-helm
+karpenter-helm:
+	@NODEGROUP=$(shell aws eks list-nodegroups --cluster-name "${MDAI_CLUSTER_NAME}" --query 'nodegroups[0]' --output text --profile ${AWS_PROFILE}) && \
+	helm upgrade -i karpenter oci://public.ecr.aws/karpenter/karpenter --version ${KARPENTER_VERSION} --namespace ${KARPENTER_NAMESPACE} \
+        --set settings.clusterName=${MDAI_CLUSTER_NAME} \
+        --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-DecisiveEngineCluster" \
+        --set-json "affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution={\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"karpenter.sh/nodepool\",\"operator\":\"DoesNotExist\"}]},{\"matchExpressions\":[{\"key\":\"eks.amazonaws.com/nodegroup\",\"operator\":\"In\",\"values\":[\""$${NODEGROUP}"\"]}]}]}" \
+        --set controller.resources.requests.cpu=1 \
+        --set controller.resources.requests.memory=1Gi \
+        --set controller.resources.limits.cpu=1 \
+        --set controller.resources.limits.memory=1Gi

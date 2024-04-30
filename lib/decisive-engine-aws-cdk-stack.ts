@@ -17,7 +17,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     const config = {
       CLUSTER: {
-        NAME: 'DecisiveEngineCluster',
+        NAME: process.env.MDAI_CLUSTER_NAME || 'DecisiveEngineCluster',
         CAPACITY: Number(process.env.MDAI_CLUSTER_CAPACITY) || 10,
         INSTANCE: {
           CLASS: Object.values(ec2.InstanceClass).find(instanceClass => instanceClass === process.env.MDAI_EC2_INSTANCE_CLASS) || ec2.InstanceClass.T2 as ec2.InstanceClass,
@@ -69,6 +69,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || 'mydecisive',
       },
       KARPENTER: {
+        ENABLE: process.env.KARPENTER || 'true',
         AWS_PARTITION: process.env.AWS_PARTITION || 'aws',
       },
     }
@@ -82,6 +83,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
 
     const cluster = new eks.Cluster(this, config.CLUSTER.NAME, {
+      clusterName: config.CLUSTER.NAME,
       version: eks.KubernetesVersion.V1_28,
       kubectlLayer: new KubectlV28Layer(this, 'kubectl'),
       mastersRole: engineMasterRole,
@@ -298,173 +300,212 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mydecisiveEngineUi.node.addDependency(mdaiAppClient);
 
-    // Karpenter
+    //
+    //    Karpenter
+    //
     // steps (non-cdk way) taken from here
     // https://karpenter.sh/docs/getting-started/migrating-from-cas/
-    const karpenterNodeRole = new iam.Role(
-        this,
-        'KarpenterNodeRole-' + config.CLUSTER.NAME, {
-          assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-          managedPolicies:  [
-            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
-            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
-            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
-            iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
-          ],
-        });
+    if (config.KARPENTER.ENABLE === 'true') {
 
-     // const karpenterInstanceProfile = new iam.InstanceProfile(
-     //     this,
-     //    'KarpenterNodeInstanceProfile',  {
-     //       instanceProfileName: 'KarpenterNodeInstanceProfile',
-     //       role: karpenterNodeRole,
-     // });
+      const karpenterNodeRole = new iam.Role(
+          this,
+          'KarpenterNodeRole-' + config.CLUSTER.NAME, {
+            roleName: 'KarpenterNodeRole-' + config.CLUSTER.NAME,
+            assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+            managedPolicies: [
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
+            ],
+          });
 
 
-    const conditions = new CfnJson(this, 'ConditionJson', {
-      value: {
-        [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
-        [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:karpenter`,
-      },
-    });
+      const karpenterInstanceProfile = new iam.InstanceProfile(
+          this,
+          'KarpenterNodeInstanceProfile', {
+            instanceProfileName: 'KarpenterNodeInstanceProfile',
+            role: karpenterNodeRole,
+          });
 
-    const karpenterControllerRole = new iam.Role(
-         this,
-         'KarpenterControllerRole-' + config.CLUSTER.NAME, {
-           assumedBy: new iam.FederatedPrincipal(`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
-             'StringEquals': conditions
-           },
-           'sts:AssumeRoleWithWebIdentity')}
-    )
 
-    const conditions2 = new CfnJson(this, 'ConditionJson2', {
-      value: {
-        [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-        'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
-      },
-    });
+      const conditions = new CfnJson(this, 'ConditionJson', {
+        value: {
+          [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
+          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:karpenter`,
+        },
+      });
 
-    const conditions3 = new CfnJson(this, 'ConditionJson3', {
-      value: {
-        [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-        'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
-        [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-        'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
-      },
-    });
-
-    const conditions4 = new CfnJson(this, 'ConditionJson4', {
-      value: {
-        [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-        'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
-      },
-    });
-
-    const karpenterControllerPolicy = new iam.Policy(this, 'KarpenterControllerPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          resources: ['*'],
-          effect: iam.Effect.ALLOW,
-          sid: 'Karpenter',
-          actions: [
-            'ssm:GetParameter',
-            'ec2:DescribeImages',
-            'ec2:RunInstances',
-            'ec2:DescribeSubnets',
-            'ec2:DescribeSecurityGroups',
-            'ec2:DescribeLaunchTemplates',
-            'ec2:DescribeInstances',
-            'ec2:DescribeInstanceTypes',
-            'ec2:DescribeInstanceTypeOfferings',
-            'ec2:DescribeAvailabilityZones',
-            'ec2:DeleteLaunchTemplate',
-            'ec2:CreateTags',
-            'ec2:CreateLaunchTemplate',
-            'ec2:CreateFleet',
-            'ec2:DescribeSpotPriceHistory',
-            'pricing:GetProducts'
-          ],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['ec2:TerminateInstances'],
-          resources: ['*'],
-          sid: 'ConditionalEC2Termination',
-          conditions: {
-            StringLike: {
-              "ec2:ResourceTag/karpenter.sh/nodepool": "*"
-            }
+      const karpenterControllerRole = new iam.Role(
+          this,
+          'KarpenterControllerRole-' + config.CLUSTER.NAME, {
+            roleName: 'KarpenterControllerRole-' + config.CLUSTER.NAME,
+            assumedBy: new iam.FederatedPrincipal(`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
+                  'StringEquals': conditions
+                },
+                'sts:AssumeRoleWithWebIdentity')
           }
-        }),
-        new iam.PolicyStatement({
-          resources: [`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:role/${karpenterNodeRole.roleName}`],
-          effect: iam.Effect.ALLOW,
-          sid: 'PassNodeIAMRole',
-          actions: [
-            'iam:PassRole'
-          ],
-        }),
-        new iam.PolicyStatement({
-          resources: [`arn:${config.KARPENTER.AWS_PARTITION}:eks:${process.env.AWS_REGION}:${process.env.AWS_ACCOUNT}:cluster/${cluster.clusterName}`],
-          effect: iam.Effect.ALLOW,
-          sid: 'EKSClusterEndpointLookup',
-          actions: [
-            'eks:DescribeCluster'
-          ],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['iam:CreateInstanceProfile'],
-          resources: ['*'],
-          sid: 'AllowScopedInstanceProfileCreationActions',
-          conditions: {
-            StringEquals: conditions2,
-            StringLike: {
-              'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*'
-            }
-          }
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['iam:TagInstanceProfile'],
-          resources: ['*'],
-          sid: 'AllowScopedInstanceProfileTagActions',
-          conditions: {
-            StringEquals: conditions3,
-            StringLike: {
-              'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*',
-              'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
-            }
-          }
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'iam:AddRoleToInstanceProfile',
-            'iam:RemoveRoleFromInstanceProfile',
-            'iam:DeleteInstanceProfile'
-          ],
-          resources: ['*'],
-          sid: 'AllowScopedInstanceProfileActions',
-          conditions: {
-            StringEquals: conditions4,
-            StringLike: {
-              'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
-            }
-          }
-        }),
-        new iam.PolicyStatement({
-          resources: [`*`],
-          effect: iam.Effect.ALLOW,
-          sid: 'AllowInstanceProfileReadActions',
-          actions: [
-            'iam:GetInstanceProfile'
-          ],
-        }),
-      ],
-    });
+      )
 
-    karpenterControllerRole.attachInlinePolicy(karpenterControllerPolicy);
+      const conditions2 = new CfnJson(this, 'ConditionJson2', {
+        value: {
+          [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+        },
+      });
+
+      const conditions3 = new CfnJson(this, 'ConditionJson3', {
+        value: {
+          [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+          [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+        },
+      });
+
+      const conditions4 = new CfnJson(this, 'ConditionJson4', {
+        value: {
+          [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+        },
+      });
+
+      const karpenterControllerPolicy = new iam.Policy(this, 'KarpenterControllerPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            resources: ['*'],
+            effect: iam.Effect.ALLOW,
+            sid: 'Karpenter',
+            actions: [
+              'ssm:GetParameter',
+              'ec2:DescribeImages',
+              'ec2:RunInstances',
+              'ec2:DescribeSubnets',
+              'ec2:DescribeSecurityGroups',
+              'ec2:DescribeLaunchTemplates',
+              'ec2:DescribeInstances',
+              'ec2:DescribeInstanceTypes',
+              'ec2:DescribeInstanceTypeOfferings',
+              'ec2:DescribeAvailabilityZones',
+              'ec2:DeleteLaunchTemplate',
+              'ec2:CreateTags',
+              'ec2:CreateLaunchTemplate',
+              'ec2:CreateFleet',
+              'ec2:DescribeSpotPriceHistory',
+              'pricing:GetProducts'
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ec2:TerminateInstances'],
+            resources: ['*'],
+            sid: 'ConditionalEC2Termination',
+            conditions: {
+              StringLike: {
+                "ec2:ResourceTag/karpenter.sh/nodepool": "*"
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            resources: [`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:role/${karpenterNodeRole.roleName}`],
+            effect: iam.Effect.ALLOW,
+            sid: 'PassNodeIAMRole',
+            actions: [
+              'iam:PassRole'
+            ],
+          }),
+          new iam.PolicyStatement({
+            resources: [`arn:${config.KARPENTER.AWS_PARTITION}:eks:${process.env.AWS_REGION}:${process.env.AWS_ACCOUNT}:cluster/${cluster.clusterName}`],
+            effect: iam.Effect.ALLOW,
+            sid: 'EKSClusterEndpointLookup',
+            actions: [
+              'eks:DescribeCluster'
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['iam:CreateInstanceProfile'],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileCreationActions',
+            conditions: {
+              StringEquals: conditions2,
+              StringLike: {
+                'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['iam:TagInstanceProfile'],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileTagActions',
+            conditions: {
+              StringEquals: conditions3,
+              StringLike: {
+                'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*',
+                'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+              'iam:AddRoleToInstanceProfile',
+              'iam:RemoveRoleFromInstanceProfile',
+              'iam:DeleteInstanceProfile'
+            ],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileActions',
+            conditions: {
+              StringEquals: conditions4,
+              StringLike: {
+                'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            resources: [`*`],
+            effect: iam.Effect.ALLOW,
+            sid: 'AllowInstanceProfileReadActions',
+            actions: [
+              'iam:GetInstanceProfile'
+            ],
+          }),
+        ],
+      });
+
+      karpenterControllerRole.attachInlinePolicy(karpenterControllerPolicy);
+
+
+      // Karpenter: tagging subnets belonging to the cluster nodegroup
+      // NB: might be better to do this outside of CDK and call aws cli commands from Makefile
+      // because security groups tagging can not be done here anyways
+
+      const subnetsPub = cluster.vpc.selectSubnets(
+          {
+            subnetType: ec2.SubnetType.PUBLIC
+          },
+      ).subnets;
+
+      const subnetsPriv = cluster.vpc.selectSubnets(
+          {
+            subnetType: ec2.SubnetType.PRIVATE
+          },
+      ).subnets;
+      const subnets = subnetsPub.concat(subnetsPriv)
+
+      cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
+        includeResources: subnets,
+      });
+
+      const vpcDefaultSecurityGroup = cluster.vpc.vpcDefaultSecurityGroup
+
+      cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
+        includeResources: vpcDefaultSecurityGroup,
+      });
+
+    }
+
 
   }
 }
