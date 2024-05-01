@@ -151,8 +151,7 @@ cert: cert-gen config
 
 
 .PHONY: karpenter
-.SILENT: karpenter
-karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-helm
+karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-helm karpenter-nodeclass
 
 .PHONY: karpenter-tag-sg
 karpenter-tag-sg:
@@ -168,9 +167,9 @@ karpenter-update-aws-auth:
 .PHONY: karpenter-crd
 karpenter-crd:
 	kubectl create namespace "${KARPENTER_NAMESPACE}" || true
-	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodepools.yaml"
-	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml"
-	kubectl create -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodepools.yaml"
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml"
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
 
 .PHONY: karpenter-helm
 karpenter-helm:
