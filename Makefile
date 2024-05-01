@@ -185,3 +185,15 @@ karpenter-helm:
         --set controller.resources.requests.memory=1Gi \
         --set controller.resources.limits.cpu=1 \
         --set controller.resources.limits.memory=1Gi
+
+.PHONY: karpenter-nodeclass
+karpenter-nodeclass:
+	touch .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id && \
+	aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query cluster.version --out text --profile ${AWS_PROFILE} > .k8s_version && \
+	echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2-arm64/recommended/image_id" > .arm_ami_parameter_name && \
+    echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2/recommended/image_id" > .amd_ami_parameter_name && \
+	aws ssm get-parameter --name `cat .arm_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .arm_ami_id && \
+	aws ssm get-parameter --name `cat .amd_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .amd_ami_id && \
+	cat .arm_ami_id && \
+	cat .amd_ami_id && \
+	rm .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id
