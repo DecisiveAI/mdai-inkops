@@ -4,13 +4,13 @@ metadata:
   name: default
 spec:
   amiFamily: AL2
-  role: "KarpenterNodeRole-${CLUSTER_NAME}"
+  role: "KarpenterNodeRole-${MDAI_CLUSTER_NAME}"
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        karpenter.sh/discovery: "${MDAI_CLUSTER_NAME}"
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        karpenter.sh/discovery: "${MDAI_CLUSTER_NAME}"
   amiSelectorTerms:
     - id: "${ARM_AMI_ID}"
     - id: "${AMD_AMI_ID}"

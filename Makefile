@@ -152,9 +152,7 @@ cert: cert-gen config
 
 .PHONY: karpenter
 .SILENT: karpenter
-karpenter: karpenter-tag-sg
-	@echo running $@, installing Karpenter
-
+karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-helm
 
 .PHONY: karpenter-tag-sg
 karpenter-tag-sg:
@@ -193,7 +191,10 @@ karpenter-nodeclass:
 	echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2-arm64/recommended/image_id" > .arm_ami_parameter_name && \
     echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2/recommended/image_id" > .amd_ami_parameter_name && \
 	aws ssm get-parameter --name `cat .arm_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .arm_ami_id && \
-	aws ssm get-parameter --name `cat .amd_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .amd_ami_id && \
-	cat .arm_ami_id && \
-	cat .amd_ami_id && \
+	aws ssm get-parameter --name `cat .amd_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .amd_ami_id
+	export ARM_AMI_ID=`cat .arm_ami_id`&&  export AMD_AMI_ID=`cat .amd_ami_id` && \
+	cat templates/karpenter-ec2nodeclass.yaml  | envsubst  > templates/karpenter-ec2nodeclass-values.yaml && \
 	rm .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id
+	kubectl apply -f templates/karpenter-nodepool.yaml
+	kubectl apply -f templates/karpenter-ec2nodeclass-values.yaml
+
