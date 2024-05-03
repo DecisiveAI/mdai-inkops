@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { DecisiveEngineAwsCdkStack } from '../lib/decisive-engine-aws-cdk-stack';
+import { DecisiveEngine } from '../lib/decisive-engine-aws-cdk-stack';
 import {Tags} from "aws-cdk-lib";
 
 const app = new cdk.App();
-const theMdaiStack = new DecisiveEngineAwsCdkStack(app, 'DecisiveEngineAwsCdkStack', {
+const stack = new DecisiveEngine(app, 'DecisiveEngine', {
+  description: "MyDecisive Engine Stack",
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
@@ -20,4 +21,4 @@ const theMdaiStack = new DecisiveEngineAwsCdkStack(app, 'DecisiveEngineAwsCdkSta
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
 });
-Tags.of(theMdaiStack).add("StackType", "DecisiveEngineAwsCdkStack")
+Tags.of(stack).add("StackType", "DecisiveEngineAwsCdkStack")

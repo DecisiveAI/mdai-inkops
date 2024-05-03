@@ -76,7 +76,7 @@ spec:
           pipelines:
             traces:
               receivers: [jaeger, otlp]
-              processors: [memory_limiter, batch]
+              processors: [batch]
               exporters: [debug]
             metrics:
               receivers: [hostmetrics, otlp]
