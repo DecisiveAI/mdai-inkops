@@ -13,12 +13,10 @@ mdai-install
 kubectl-cfg-command
 .env
 cdk-output.json
-.idea/decisive-engine-aws-cdk.iml
-.idea/vcs.xml
-.idea/workspace.xml
 
 lib/*
 values/*
 
 
 .DS_Store
+.idea/*
