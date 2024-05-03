@@ -108,16 +108,76 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       version: eks.KubernetesVersion.V1_30,
       kubectlLayer: new KubectlLayer(this, 'kubectl'),
       mastersRole: engineMasterRole,
-      defaultCapacity: config.CLUSTER.CAPACITY,
-      defaultCapacityInstance: ec2.InstanceType.of(
-        config.CLUSTER.INSTANCE.CLASS,
-        config.CLUSTER.INSTANCE.SIZE,
-      ),
+      defaultCapacity: 0,
       // AWS ALB contoller
       albController: {
         version: eks.AlbControllerVersion.V2_6_2,
       },
     });
+
+    // Create an IAM role for EKS Nodes
+    const nodeRole = new iam.Role(this, 'MyNodeRole', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
+      ],
+    });
+
+    const clusterName = cluster.clusterName;
+    const clusterEndpoint = cluster.clusterEndpoint;
+    const clusterCertificateAuthorityData = cluster.clusterCertificateAuthorityData;
+    // The userDataScript below is not tested, more details https://trying2adult.com/what-is-xdp-and-how-do-you-use-it-in-linux-amazon-ec2-example/
+    // mtu 3818 is not correct, should be 3498
+    // ens5 is default network interface
+    const userDataScript = `#!/bin/bash -xe
+sudo /etc/eks/bootstrap.sh --apiserver-endpoint '${clusterEndpoint}' --b64-cluster-ca '${clusterCertificateAuthorityData}' '${clusterName}'
+sudo ip link set dev ens5 mtu 3498
+sudo ethtool -L ens5 combined 1
+`;
+
+    const launchTemplate = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
+      launchTemplateName: 'UbuntuLaunchTemplate',
+      launchTemplateData: {
+        imageId: 'ami-070190584709ec64f', //ubuntu https://cloud-images.ubuntu.com/docs/aws/eks/
+        // keyName: 'node', // uncomment for debug purpose via ssh
+        userData: cdk.Fn.base64(userDataScript),
+        securityGroupIds: [cluster.clusterSecurityGroup.securityGroupId],
+        tagSpecifications: [
+          {
+            resourceType: 'instance',
+            tags: [
+              { key: `kubernetes.io/cluster/${clusterName}`, value: 'owned' }
+            ]
+          },
+          {
+            resourceType: 'volume',
+            tags: [
+              { key: `kubernetes.io/cluster/${clusterName}`, value: 'owned' }
+            ]
+          }
+        ],
+      },
+    });
+
+    const vpc = cluster.vpc;
+    const subnets = vpc.privateSubnets;
+    // const subnets = vpc.publicSubnets; // TODO use public for debug purpose via ssh
+    const nodeGroupCapacity = cluster.addNodegroupCapacity('Ubuntu_X86_64', {
+      subnets: { subnets: subnets },
+      nodeRole: nodeRole,
+      launchTemplateSpec: {
+        id: launchTemplate.ref,
+        version: launchTemplate.attrLatestVersionNumber,
+      },
+      instanceTypes: [ec2.InstanceType.of(
+          config.CLUSTER.INSTANCE.CLASS,
+          config.CLUSTER.INSTANCE.SIZE,
+      ),],
+      desiredSize: config.CLUSTER.CAPACITY
+    });
+    cluster.albController?.node.addDependency(nodeGroupCapacity);
 
     // From: https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions
     const manifests = yaml.loadAll(readFileSync(path.join(__dirname, 'eks-console-full-access.yaml'), { encoding: 'utf-8' })) as Record<string, any>[];
@@ -198,7 +258,9 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       values: {
         installCRDs: true
       },
+      timeout: cdk.Duration.minutes(10),
     });
+    certManager.node.addDependency(nodeGroupCapacity);
 
     const otelOperator = cluster.addHelmChart('otelOperator', {
       chart: config.OTEL_OPERATOR.CHART,
@@ -355,7 +417,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     const mdaiConsole = cluster.addHelmChart("mdai-console", consoleConfig);
     if (config.MDAI_COGNITO.ENABLE && mdaiAppClient) {
       mdaiConsole.node.addDependency(mdaiAppClient);
-    } 
+    }
 
     //
     //    Karpenter
@@ -365,7 +427,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     if (config.KARPENTER.ENABLE === 'true') {
       const karpenterNodeRole = new iam.Role(
           this,
-          `KarpenterNodeRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`, 
+          `KarpenterNodeRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`,
           {
             roleName: `KarpenterNodeRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -541,9 +603,9 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         includeResourceTypes: ['AWS::EC2::Subnet'],
       });
     }
-    
+
     // Add Datalyzer service to helm chart for installation
-    
+
     cluster.addHelmChart("datalyzer", {
       chart: config.DATALYZER.CHART,
       repository: config.DATALYZER.REPO,
