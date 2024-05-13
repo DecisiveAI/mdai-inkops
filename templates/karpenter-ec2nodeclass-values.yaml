@@ -12,5 +12,5 @@ spec:
     - tags:
         karpenter.sh/discovery: "DecisiveEngineCluster"
   amiSelectorTerms:
-    - id: "ami-012081e0313caa178"
-    - id: "ami-0a4e407992692a492"
+    - id: "ami-0e33142d4da49bded"
+    - id: "ami-05fb230d52f1af201"

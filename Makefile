@@ -149,7 +149,6 @@ cert-gen: config-aws
 .SILENT: cert
 cert: cert-gen config
 
-
 .PHONY: karpenter
 karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-helm karpenter-nodeclass
 
@@ -160,7 +159,7 @@ karpenter-tag-sg:
 
 .PHONY: karpenter-update-aws-auth
 karpenter-update-aws-auth:
-	eksctl create iamidentitymapping  --cluster DecisiveEngineCluster --username system:node:{{EC2PrivateDNSName}} \
+	eksctl create iamidentitymapping --cluster DecisiveEngineCluster --username system:node:{{EC2PrivateDNSName}} \
 	--group system:bootstrappers,system:nodes --arn arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterNodeRole-${MDAI_CLUSTER_NAME} \
 	--profile ${AWS_PROFILE}
 
@@ -178,10 +177,10 @@ karpenter-helm:
         --set settings.clusterName=${MDAI_CLUSTER_NAME} \
         --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-DecisiveEngineCluster" \
         --set-json "affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution={\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"karpenter.sh/nodepool\",\"operator\":\"DoesNotExist\"}]},{\"matchExpressions\":[{\"key\":\"eks.amazonaws.com/nodegroup\",\"operator\":\"In\",\"values\":[\""$${NODEGROUP}"\"]}]}]}" \
-        --set controller.resources.requests.cpu=1 \
-        --set controller.resources.requests.memory=1Gi \
-        --set controller.resources.limits.cpu=1 \
-        --set controller.resources.limits.memory=1Gi
+        --set controller.resources.requests.cpu=250m \
+        --set controller.resources.requests.memory=250Mi \
+        --set controller.resources.limits.cpu=500m \
+        --set controller.resources.limits.memory=500Mi
 
 .PHONY: karpenter-nodeclass
 karpenter-nodeclass:
@@ -191,9 +190,8 @@ karpenter-nodeclass:
     echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2/recommended/image_id" > .amd_ami_parameter_name && \
 	aws ssm get-parameter --name `cat .arm_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .arm_ami_id && \
 	aws ssm get-parameter --name `cat .amd_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .amd_ami_id
-	export ARM_AMI_ID=`cat .arm_ami_id`&&  export AMD_AMI_ID=`cat .amd_ami_id` && \
-	cat templates/karpenter-ec2nodeclass.yaml  | envsubst  > templates/karpenter-ec2nodeclass-values.yaml && \
+	export ARM_AMI_ID=`cat .arm_ami_id`&& export AMD_AMI_ID=`cat .amd_ami_id` && \
+	cat templates/karpenter-ec2nodeclass.yaml | envsubst > templates/karpenter-ec2nodeclass-values.yaml && \
 	rm .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id
 	kubectl apply -f templates/karpenter-nodepool.yaml
 	kubectl apply -f templates/karpenter-ec2nodeclass-values.yaml
-

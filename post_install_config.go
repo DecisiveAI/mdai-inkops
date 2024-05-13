@@ -43,13 +43,9 @@ func addRoleMapping(roleArn string) error {
 
 	var mapRoles []MapRole
 
-	errJson := json.Unmarshal(mapRolesBytes, &mapRoles)
-
-	if errJson != nil {
-		errYaml := yaml.Unmarshal(mapRolesBytes, &mapRoles)
-		if errYaml != nil {
-			err = fmt.Errorf("failed to unmarshal mapRoles: json error: %v, yaml error: %v", errJson.Error(), errYaml.Error())
-			return err
+	if errJSON := json.Unmarshal(mapRolesBytes, &mapRoles); errJSON != nil {
+		if errYAML := yaml.Unmarshal(mapRolesBytes, &mapRoles); errYAML != nil {
+			return fmt.Errorf("failed to unmarshal mapRoles: json error: %w, yaml error: %w", errJSON, errYAML)
 		}
 	}
 

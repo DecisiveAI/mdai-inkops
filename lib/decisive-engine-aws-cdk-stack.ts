@@ -9,7 +9,6 @@ import { Construct } from 'constructs';
 import { KubectlV28Layer } from '@aws-cdk/lambda-layer-kubectl-v28';
 import * as path from 'path';
 import 'dotenv/config'
-import {CfnJson} from 'aws-cdk-lib/core/lib';
 
 export class DecisiveEngineAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -49,6 +48,13 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         CHART: 'prometheus',
         RELEASE: 'prometheus',
       },
+      METRICS_SERVER: {
+        NAMESPACE: 'kube-system',
+        REPO: 'https://kubernetes-sigs.github.io/metrics-server/',
+        VERSION: '3.12.1',
+        CHART: 'metrics-server',
+        RELEASE: 'metrics-server',
+      },
       MDAI_API: {
         NAMESPACE: 'default',
         REPO: 'https://decisiveai.github.io/mdai-helm-charts',
@@ -70,7 +76,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       },
       KARPENTER: {
         ENABLE: process.env.KARPENTER || 'true',
-        AWS_PARTITION: process.env.AWS_PARTITION || 'aws',
         NAMESPACE: 'kube-system'
       },
     }
@@ -219,6 +224,17 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     prometheus.node.addDependency(otelOperator);
 
+    const metricsServer = cluster.addHelmChart('metrics-server', {
+      chart: config.METRICS_SERVER.CHART,
+      repository: config.METRICS_SERVER.REPO,
+      namespace: config.METRICS_SERVER.NAMESPACE,
+      createNamespace: false,
+      release: config.METRICS_SERVER.RELEASE,
+      version: config.METRICS_SERVER.VERSION,
+      wait: true,
+    });
+    metricsServer.node.addDependency(prometheus);
+
     const mdaiApi = cluster.addHelmChart('mdai-api', {
       chart: config.MDAI_API.CHART,
       repository: config.MDAI_API.REPO,
@@ -307,7 +323,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     // steps (non-cdk way) taken from here
     // https://karpenter.sh/docs/getting-started/migrating-from-cas/
     if (config.KARPENTER.ENABLE === 'true') {
-
       const karpenterNodeRole = new iam.Role(
           this,
           'KarpenterNodeRole-' + config.CLUSTER.NAME, {
@@ -322,7 +337,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           });
 
 
-      const karpenterInstanceProfile = new iam.InstanceProfile(
+      new iam.InstanceProfile(
           this,
           'KarpenterNodeInstanceProfile', {
             instanceProfileName: 'KarpenterNodeInstanceProfile',
@@ -330,7 +345,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           });
 
 
-      const conditions = new CfnJson(this, 'ConditionJson', {
+      const conditions = new cdk.CfnJson(this, 'ConditionAudienceServiceAccount', {
         value: {
           [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
           [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:${config.KARPENTER.NAMESPACE}:karpenter`,
@@ -341,33 +356,33 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           this,
           'KarpenterControllerRole-' + config.CLUSTER.NAME, {
             roleName: 'KarpenterControllerRole-' + config.CLUSTER.NAME,
-            assumedBy: new iam.FederatedPrincipal(`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
+            assumedBy: new iam.FederatedPrincipal(`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
                   'StringEquals': conditions
                 },
                 'sts:AssumeRoleWithWebIdentity')
           }
       )
 
-      const conditions2 = new CfnJson(this, 'ConditionJson2', {
+      const conditionsRequestTag = new cdk.CfnJson(this, 'ConditionTagRequestTag', {
         value: {
           [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-          'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+          'aws:RequestTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
         },
       });
 
-      const conditions3 = new CfnJson(this, 'ConditionJson3', {
+      const conditionsResourceTagRequestTag = new cdk.CfnJson(this, 'ConditionResourceTagRequestTag', {
         value: {
           [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-          'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+          'aws:ResourceTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
           [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-          'aws:RequestTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+          'aws:RequestTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
         },
       });
 
-      const conditions4 = new CfnJson(this, 'ConditionJson4', {
+      const conditionsResourceTag = new cdk.CfnJson(this, 'ConditionResourceTag', {
         value: {
           [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
-          'aws:ResourceTag/topology.kubernetes.io/region': `${process.env.AWS_REGION}`,
+          'aws:ResourceTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
         },
       });
 
@@ -408,7 +423,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
             }
           }),
           new iam.PolicyStatement({
-            resources: [`arn:${config.KARPENTER.AWS_PARTITION}:iam::${process.env.AWS_ACCOUNT}:role/${karpenterNodeRole.roleName}`],
+            resources: [`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:role/${karpenterNodeRole.roleName}`],
             effect: iam.Effect.ALLOW,
             sid: 'PassNodeIAMRole',
             actions: [
@@ -416,7 +431,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
             ],
           }),
           new iam.PolicyStatement({
-            resources: [`arn:${config.KARPENTER.AWS_PARTITION}:eks:${process.env.AWS_REGION}:${process.env.AWS_ACCOUNT}:cluster/${cluster.clusterName}`],
+            resources: [`arn:${cdk.Aws.PARTITION}:eks:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:cluster/${cluster.clusterName}`],
             effect: iam.Effect.ALLOW,
             sid: 'EKSClusterEndpointLookup',
             actions: [
@@ -429,7 +444,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
             resources: ['*'],
             sid: 'AllowScopedInstanceProfileCreationActions',
             conditions: {
-              StringEquals: conditions2,
+              StringEquals: conditionsRequestTag,
               StringLike: {
                 'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*'
               }
@@ -441,7 +456,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
             resources: ['*'],
             sid: 'AllowScopedInstanceProfileTagActions',
             conditions: {
-              StringEquals: conditions3,
+              StringEquals: conditionsResourceTagRequestTag,
               StringLike: {
                 'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*',
                 'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
@@ -458,7 +473,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
             resources: ['*'],
             sid: 'AllowScopedInstanceProfileActions',
             conditions: {
-              StringEquals: conditions4,
+              StringEquals: conditionsResourceTag,
               StringLike: {
                 'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
               }
@@ -474,9 +489,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           }),
         ],
       });
-
       karpenterControllerRole.attachInlinePolicy(karpenterControllerPolicy);
-
 
       // Karpenter: tagging subnets belonging to the cluster nodegroup
       // NB: might be better to do this outside of CDK and call aws cli commands from Makefile
@@ -498,15 +511,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
         includeResources: subnets,
       });
-
-      const vpcDefaultSecurityGroup = cluster.vpc.vpcDefaultSecurityGroup
-
-      cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
-        includeResources: vpcDefaultSecurityGroup,
-      });
-
     }
-
-
   }
 }
