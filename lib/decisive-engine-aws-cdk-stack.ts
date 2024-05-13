@@ -62,26 +62,33 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         CHART: 'mdai-api',
         RELEASE: 'mdai-api',
       },
-      MDAI_UI: {
-        NAMESPACE: 'default',
-        REPO: 'https://decisiveai.github.io/mdai-helm-charts',
-        VERSION: process.env.MDAI_CONSOLE_VERSION || '0.0.6-cognito',
-        CHART: 'mdai-console',
-        RELEASE: 'mdai-console',
+      MDAI_CONSOLE: {
+        NAMESPACE: "default",
+        REPO: "https://decisiveai.github.io/mdai-helm-charts",
+        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6-cognito",
+        CHART: "mdai-console",
+        RELEASE: "mdai-console",
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
       },
       MDAI_COGNITO: {
-        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || 'console.mydecisive.ai',
-        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || 'mydecisive',
+        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
+        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
       },
       KARPENTER: {
         ENABLE: process.env.KARPENTER || 'true',
         NAMESPACE: 'kube-system'
       },
+      DATALYZER: {
+        NAMESPACE: "default",
+        REPO: "https://decisiveai.github.io/mdai-helm-charts",
+        VERSION: process.env.DATALYZER_VERSION || "0.0.1",
+        CHART: "datalyzer",
+        RELEASE: "datalyzer",
+      }
     }
 
-    if (config.MDAI_UI.ACM_ARN == undefined) {
-      throw new Error('MDAI_UI_ACM_ARN was not specified')
+    if (config.MDAI_CONSOLE.ACM_ARN == undefined) {
+      throw new Error("MDAI_UI_ACM_ARN was not specified")
     }
 
     const engineMasterRole = new iam.Role(this, 'DecisiveEngineMasterRole', {
@@ -246,7 +253,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiApi.node.addDependency(prometheus);
 
-    const mdaiUserPool= new cognito.UserPool(this, 'mdai-user-pool', {
+    const mdaiUserPool = new cognito.UserPool(this, 'mdai-user-pool', {
       userPoolName: 'mdai-user-pool',
       signInAliases: {
         email: true,
@@ -296,13 +303,13 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
 
-    const mydecisiveEngineUi = cluster.addHelmChart('mdai-console', {
-      chart: config.MDAI_UI.CHART,
-      repository: config.MDAI_UI.REPO,
-      namespace: config.MDAI_UI.NAMESPACE,
+    const mdaiConsole = cluster.addHelmChart("mdai-console", {
+      chart: config.MDAI_CONSOLE.CHART,
+      repository: config.MDAI_CONSOLE.REPO,
+      namespace: config.MDAI_CONSOLE.NAMESPACE,
       createNamespace: true,
-      release: config.MDAI_UI.RELEASE,
-      version: config.MDAI_UI.VERSION,
+      release: config.MDAI_CONSOLE.RELEASE,
+      version: config.MDAI_CONSOLE.VERSION,
       wait: true,
       values: {
         'ingress': {
@@ -315,7 +322,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         }
       }
     });
-    mydecisiveEngineUi.node.addDependency(mdaiAppClient);
+    mdaiConsole.node.addDependency(mdaiAppClient);
 
     //
     //    Karpenter
@@ -512,5 +519,14 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         includeResources: subnets,
       });
     }
+    const datalyzer = cluster.addHelmChart("datalyzer", {
+      chart: config.DATALYZER.CHART,
+      repository: config.DATALYZER.REPO,
+      namespace: config.DATALYZER.NAMESPACE,
+      createNamespace: true,
+      release: config.DATALYZER.RELEASE,
+      version: config.DATALYZER.VERSION,
+      wait: true,
+    });
   }
 }
