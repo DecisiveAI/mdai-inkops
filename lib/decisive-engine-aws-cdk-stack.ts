@@ -1,13 +1,13 @@
-import * as cdk from "aws-cdk-lib";
-import * as eks from "aws-cdk-lib/aws-eks";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as iam from "aws-cdk-lib/aws-iam";
+import * as cdk from 'aws-cdk-lib';
+import * as eks from 'aws-cdk-lib/aws-eks';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as yaml from "js-yaml";
-import { readFileSync } from "fs";
-import { Construct } from "constructs";
-import { KubectlV28Layer } from "@aws-cdk/lambda-layer-kubectl-v28";
-import * as path from "path";
+import * as yaml from 'js-yaml';
+import { readFileSync } from 'fs';
+import { Construct } from 'constructs';
+import { KubectlV28Layer } from '@aws-cdk/lambda-layer-kubectl-v28';
+import * as path from 'path';
 import 'dotenv/config'
 
 export class DecisiveEngineAwsCdkStack extends cdk.Stack {
@@ -16,7 +16,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     const config = {
       CLUSTER: {
-        NAME: "DecisiveEngineCluster",
+        NAME: process.env.MDAI_CLUSTER_NAME || 'DecisiveEngineCluster',
         CAPACITY: Number(process.env.MDAI_CLUSTER_CAPACITY) || 10,
         INSTANCE: {
           CLASS: Object.values(ec2.InstanceClass).find(instanceClass => instanceClass === process.env.MDAI_EC2_INSTANCE_CLASS) || ec2.InstanceClass.T2 as ec2.InstanceClass,
@@ -24,62 +24,74 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         },
       },
       CERT_MANAGER: {
-        NAMESPACE: "cert-manager",
-        REPO: "https://charts.jetstack.io",
-        VERSION: process.env.MDAI_CERT_MANAGER_VERSION || "1.13.1",
-        CHART: "cert-manager",
-        RELEASE: "cert-manager",
+        NAMESPACE: 'cert-manager',
+        REPO: 'https://charts.jetstack.io',
+        VERSION: process.env.MDAI_CERT_MANAGER_VERSION || '1.13.1',
+        CHART: 'cert-manager',
+        RELEASE: 'cert-manager',
       },
       OTEL_OPERATOR: {
-        NAMESPACE: "opentelemetry-operator-system",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_OTEL_OPERATOR_VERSION || "0.43.1",
-        CHART: "opentelemetry-operator",
-        RELEASE: "opentelemetry-operator",
+        NAMESPACE: 'opentelemetry-operator-system',
+        REPO: 'https://decisiveai.github.io/mdai-helm-charts',
+        VERSION: process.env.MDAI_OTEL_OPERATOR_VERSION || '0.43.1',
+        CHART: 'opentelemetry-operator',
+        RELEASE: 'opentelemetry-operator',
         MANAGER: {
-          REPO: process.env.MDAI_OTEL_OPERATOR_MANAGER_REPO || "public.ecr.aws/p3k6k6h3/opentelemetry-operator",
-          VERSION: process.env.MDAI_OTEL_OPERATOR_MANAGER_VERSION || "latest",
+          REPO: process.env.MDAI_OTEL_OPERATOR_MANAGER_REPO || 'public.ecr.aws/p3k6k6h3/opentelemetry-operator',
+          VERSION: process.env.MDAI_OTEL_OPERATOR_MANAGER_VERSION || 'latest',
         },
       },
       PROMETHEUS: {
-        NAMESPACE: "default",
-        REPO: "https://prometheus-community.github.io/helm-charts",
-        VERSION: process.env.MDAI_PROMETHEUS_VERSION || "25.11.0",
-        CHART: "prometheus",
-        RELEASE: "prometheus",
+        NAMESPACE: 'default',
+        REPO: 'https://prometheus-community.github.io/helm-charts',
+        VERSION: process.env.MDAI_PROMETHEUS_VERSION || '25.11.0',
+        CHART: 'prometheus',
+        RELEASE: 'prometheus',
+      },
+      METRICS_SERVER: {
+        NAMESPACE: 'kube-system',
+        REPO: 'https://kubernetes-sigs.github.io/metrics-server/',
+        VERSION: '3.12.1',
+        CHART: 'metrics-server',
+        RELEASE: 'metrics-server',
       },
       MDAI_API: {
-        NAMESPACE: "default",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_API_VERSION || "0.0.3",
-        CHART: "mdai-api",
-        RELEASE: "mdai-api",
+        NAMESPACE: 'default',
+        REPO: 'https://decisiveai.github.io/mdai-helm-charts',
+        VERSION: process.env.MDAI_API_VERSION || '0.0.3',
+        CHART: 'mdai-api',
+        RELEASE: 'mdai-api',
       },
       MDAI_UI: {
-        NAMESPACE: "default",
-        REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6-cognito",
-        CHART: "mdai-console",
-        RELEASE: "mdai-console",
+        NAMESPACE: 'default',
+        REPO: 'https://decisiveai.github.io/mdai-helm-charts',
+        VERSION: process.env.MDAI_CONSOLE_VERSION || '0.0.6-cognito',
+        CHART: 'mdai-console',
+        RELEASE: 'mdai-console',
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
       },
       MDAI_COGNITO: {
-        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
-        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
-      }
+        UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || 'console.mydecisive.ai',
+        USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || 'mydecisive',
+      },
+      KARPENTER: {
+        ENABLE: process.env.KARPENTER || 'true',
+        NAMESPACE: 'kube-system'
+      },
     }
 
     if (config.MDAI_UI.ACM_ARN == undefined) {
-      throw new Error("MDAI_UI_ACM_ARN was not specified")
+      throw new Error('MDAI_UI_ACM_ARN was not specified')
     }
 
-    const engineMasterRole = new iam.Role(this, "DecisiveEngineMasterRole", {
+    const engineMasterRole = new iam.Role(this, 'DecisiveEngineMasterRole', {
       assumedBy: new iam.AccountRootPrincipal(),
     });
 
     const cluster = new eks.Cluster(this, config.CLUSTER.NAME, {
+      clusterName: config.CLUSTER.NAME,
       version: eks.KubernetesVersion.V1_28,
-      kubectlLayer: new KubectlV28Layer(this, "kubectl"),
+      kubectlLayer: new KubectlV28Layer(this, 'kubectl'),
       mastersRole: engineMasterRole,
       defaultCapacity: config.CLUSTER.CAPACITY,
       defaultCapacityInstance: ec2.InstanceType.of(
@@ -93,7 +105,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
 
     // From: https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions
-    const manifests = yaml.loadAll(readFileSync(path.join(__dirname, "eks-console-full-access.yaml"), { encoding: "utf-8" })) as Record<string, any>[];
+    const manifests = yaml.loadAll(readFileSync(path.join(__dirname, 'eks-console-full-access.yaml'), { encoding: 'utf-8' })) as Record<string, any>[];
     manifests.forEach((manifest, index) =>
       cluster.addManifest(
         `ConsoleAccess${manifest.kind || index}`,
@@ -104,30 +116,30 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     // Based on https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions
     const consoleAccessPolicy = new iam.Policy(
       this,
-      "DecisiveEngineConsoleAccessPolicy",
+      'DecisiveEngineConsoleAccessPolicy',
       {
         document: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: [
-                "eks:ListFargateProfiles",
-                "eks:DescribeNodegroup",
-                "eks:ListNodegroups",
-                "eks:ListUpdates",
-                "eks:AccessKubernetesApi",
-                "eks:ListAddons",
-                "eks:DescribeCluster",
-                "eks:DescribeAddonVersions",
-                "eks:ListClusters",
-                "eks:ListIdentityProviderConfigs",
-                "iam:ListRoles",
+                'eks:ListFargateProfiles',
+                'eks:DescribeNodegroup',
+                'eks:ListNodegroups',
+                'eks:ListUpdates',
+                'eks:AccessKubernetesApi',
+                'eks:ListAddons',
+                'eks:DescribeCluster',
+                'eks:DescribeAddonVersions',
+                'eks:ListClusters',
+                'eks:ListIdentityProviderConfigs',
+                'iam:ListRoles',
               ],
-              resources: ["*"],
+              resources: ['*'],
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
-              actions: ["ssm:GetParameter"],
+              actions: ['ssm:GetParameter'],
               resources: [
                 // TODO: Is this a durable way to propagate the account?
                 `arn:aws:ssm:*:${process.env.CDK_DEFAULT_ACCOUNT}:parameter/*`,
@@ -140,7 +152,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     const consoleAccessGroup = new iam.Group(
       this,
-      "DecisiveEngineConsoleAccessGroup",
+      'DecisiveEngineConsoleAccessGroup',
       {
         groupName: `DecisiveEngineConsoleAccessGroup-${process.env.CDK_DEFAULT_REGION}`,
       }
@@ -148,19 +160,19 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     consoleAccessGroup.attachInlinePolicy(consoleAccessPolicy);
 
-    new cdk.CfnOutput(this, "ConsoleAccessGroupArn", {
+    new cdk.CfnOutput(this, 'ConsoleAccessGroupArn', {
       description:
-        "Add users that need console access to this cluster's resources to the group with this ARN",
+        'Add users that need console access to this cluster\'s resources to the group with this ARN',
       value: consoleAccessGroup.groupArn,
     });
-    new cdk.CfnOutput(this, "ConsoleAccessConfigMapping", {
+    new cdk.CfnOutput(this, 'ConsoleAccessConfigMapping', {
       description:
-        "Add users that should have access to this cluster's resources in the AWS console by following (3) here",
+        'Add users that should have access to this cluster\'s resources in the AWS console by following (3) here',
       value:
-        "https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions",
+        'https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions',
     });
 
-    const certManager = cluster.addHelmChart("certManager", {
+    const certManager = cluster.addHelmChart('certManager', {
       chart: config.CERT_MANAGER.CHART,
       repository: config.CERT_MANAGER.REPO,
       namespace: config.CERT_MANAGER.NAMESPACE,
@@ -173,7 +185,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       },
     });
 
-    const otelOperator = cluster.addHelmChart("otelOperator", {
+    const otelOperator = cluster.addHelmChart('otelOperator', {
       chart: config.OTEL_OPERATOR.CHART,
       repository: config.OTEL_OPERATOR.REPO,
       namespace: config.OTEL_OPERATOR.NAMESPACE,
@@ -197,10 +209,10 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     otelOperator.node.addDependency(certManager);
 
-    const collectorCrManifest = yaml.load(readFileSync(path.join(__dirname, "otelcol.yaml"), { encoding: "utf-8" })) as Record<string, any>;
-    cluster.addManifest("collectorCrManifest", collectorCrManifest).node.addDependency(otelOperator);
+    const collectorCrManifest = yaml.load(readFileSync(path.join(__dirname, 'otelcol.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
+    cluster.addManifest('collectorCrManifest', collectorCrManifest).node.addDependency(otelOperator);
 
-    const prometheus = cluster.addHelmChart("prometheus", {
+    const prometheus = cluster.addHelmChart('prometheus', {
       chart: config.PROMETHEUS.CHART,
       repository: config.PROMETHEUS.REPO,
       namespace: config.PROMETHEUS.NAMESPACE,
@@ -208,11 +220,22 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       release: config.PROMETHEUS.RELEASE,
       version: config.PROMETHEUS.VERSION,
       wait: true,
-      values: yaml.load(readFileSync(path.join(__dirname, "../templates/prometheus-values.yaml"), "utf8")) as Record<string, any>,
+      values: yaml.load(readFileSync(path.join(__dirname, '../templates/prometheus-values.yaml'), 'utf8')) as Record<string, any>,
     });
     prometheus.node.addDependency(otelOperator);
 
-    const mdaiApi = cluster.addHelmChart("mdai-api", {
+    const metricsServer = cluster.addHelmChart('metrics-server', {
+      chart: config.METRICS_SERVER.CHART,
+      repository: config.METRICS_SERVER.REPO,
+      namespace: config.METRICS_SERVER.NAMESPACE,
+      createNamespace: false,
+      release: config.METRICS_SERVER.RELEASE,
+      version: config.METRICS_SERVER.VERSION,
+      wait: true,
+    });
+    metricsServer.node.addDependency(prometheus);
+
+    const mdaiApi = cluster.addHelmChart('mdai-api', {
       chart: config.MDAI_API.CHART,
       repository: config.MDAI_API.REPO,
       namespace: config.MDAI_API.NAMESPACE,
@@ -273,7 +296,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
 
-    const mydecisiveEngineUi = cluster.addHelmChart("mdai-console", {
+    const mydecisiveEngineUi = cluster.addHelmChart('mdai-console', {
       chart: config.MDAI_UI.CHART,
       repository: config.MDAI_UI.REPO,
       namespace: config.MDAI_UI.NAMESPACE,
@@ -294,5 +317,200 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mydecisiveEngineUi.node.addDependency(mdaiAppClient);
 
+    //
+    //    Karpenter
+    //
+    // steps (non-cdk way) taken from here
+    // https://karpenter.sh/docs/getting-started/migrating-from-cas/
+    if (config.KARPENTER.ENABLE === 'true') {
+      const karpenterNodeRole = new iam.Role(
+          this,
+          'KarpenterNodeRole-' + config.CLUSTER.NAME, {
+            roleName: 'KarpenterNodeRole-' + config.CLUSTER.NAME,
+            assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+            managedPolicies: [
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
+              iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
+            ],
+          });
+
+
+      new iam.InstanceProfile(
+          this,
+          'KarpenterNodeInstanceProfile', {
+            instanceProfileName: 'KarpenterNodeInstanceProfile',
+            role: karpenterNodeRole,
+          });
+
+
+      const conditions = new cdk.CfnJson(this, 'ConditionAudienceServiceAccount', {
+        value: {
+          [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
+          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:${config.KARPENTER.NAMESPACE}:karpenter`,
+        },
+      });
+
+      const karpenterControllerRole = new iam.Role(
+          this,
+          'KarpenterControllerRole-' + config.CLUSTER.NAME, {
+            roleName: 'KarpenterControllerRole-' + config.CLUSTER.NAME,
+            assumedBy: new iam.FederatedPrincipal(`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
+                  'StringEquals': conditions
+                },
+                'sts:AssumeRoleWithWebIdentity')
+          }
+      )
+
+      const conditionsRequestTag = new cdk.CfnJson(this, 'ConditionTagRequestTag', {
+        value: {
+          [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:RequestTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
+        },
+      });
+
+      const conditionsResourceTagRequestTag = new cdk.CfnJson(this, 'ConditionResourceTagRequestTag', {
+        value: {
+          [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:ResourceTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
+          [`aws:RequestTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:RequestTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
+        },
+      });
+
+      const conditionsResourceTag = new cdk.CfnJson(this, 'ConditionResourceTag', {
+        value: {
+          [`aws:ResourceTag/kubernetes.io/cluster/${cluster.clusterName}`]: 'owned',
+          'aws:ResourceTag/topology.kubernetes.io/region': `${cdk.Aws.REGION}`,
+        },
+      });
+
+      const karpenterControllerPolicy = new iam.Policy(this, 'KarpenterControllerPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            resources: ['*'],
+            effect: iam.Effect.ALLOW,
+            sid: 'Karpenter',
+            actions: [
+              'ssm:GetParameter',
+              'ec2:DescribeImages',
+              'ec2:RunInstances',
+              'ec2:DescribeSubnets',
+              'ec2:DescribeSecurityGroups',
+              'ec2:DescribeLaunchTemplates',
+              'ec2:DescribeInstances',
+              'ec2:DescribeInstanceTypes',
+              'ec2:DescribeInstanceTypeOfferings',
+              'ec2:DescribeAvailabilityZones',
+              'ec2:DeleteLaunchTemplate',
+              'ec2:CreateTags',
+              'ec2:CreateLaunchTemplate',
+              'ec2:CreateFleet',
+              'ec2:DescribeSpotPriceHistory',
+              'pricing:GetProducts'
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ec2:TerminateInstances'],
+            resources: ['*'],
+            sid: 'ConditionalEC2Termination',
+            conditions: {
+              StringLike: {
+                "ec2:ResourceTag/karpenter.sh/nodepool": "*"
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            resources: [`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:role/${karpenterNodeRole.roleName}`],
+            effect: iam.Effect.ALLOW,
+            sid: 'PassNodeIAMRole',
+            actions: [
+              'iam:PassRole'
+            ],
+          }),
+          new iam.PolicyStatement({
+            resources: [`arn:${cdk.Aws.PARTITION}:eks:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:cluster/${cluster.clusterName}`],
+            effect: iam.Effect.ALLOW,
+            sid: 'EKSClusterEndpointLookup',
+            actions: [
+              'eks:DescribeCluster'
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['iam:CreateInstanceProfile'],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileCreationActions',
+            conditions: {
+              StringEquals: conditionsRequestTag,
+              StringLike: {
+                'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['iam:TagInstanceProfile'],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileTagActions',
+            conditions: {
+              StringEquals: conditionsResourceTagRequestTag,
+              StringLike: {
+                'aws:RequestTag/karpenter.k8s.aws/ec2nodeclass': '*',
+                'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+              'iam:AddRoleToInstanceProfile',
+              'iam:RemoveRoleFromInstanceProfile',
+              'iam:DeleteInstanceProfile'
+            ],
+            resources: ['*'],
+            sid: 'AllowScopedInstanceProfileActions',
+            conditions: {
+              StringEquals: conditionsResourceTag,
+              StringLike: {
+                'aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass': '*'
+              }
+            }
+          }),
+          new iam.PolicyStatement({
+            resources: [`*`],
+            effect: iam.Effect.ALLOW,
+            sid: 'AllowInstanceProfileReadActions',
+            actions: [
+              'iam:GetInstanceProfile'
+            ],
+          }),
+        ],
+      });
+      karpenterControllerRole.attachInlinePolicy(karpenterControllerPolicy);
+
+      // Karpenter: tagging subnets belonging to the cluster nodegroup
+      // NB: might be better to do this outside of CDK and call aws cli commands from Makefile
+      // because security groups tagging can not be done here anyways
+
+      const subnetsPub = cluster.vpc.selectSubnets(
+          {
+            subnetType: ec2.SubnetType.PUBLIC
+          },
+      ).subnets;
+
+      const subnetsPriv = cluster.vpc.selectSubnets(
+          {
+            subnetType: ec2.SubnetType.PRIVATE
+          },
+      ).subnets;
+      const subnets = subnetsPub.concat(subnetsPriv)
+
+      cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
+        includeResources: subnets,
+      });
+    }
   }
 }

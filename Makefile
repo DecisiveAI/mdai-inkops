@@ -21,6 +21,9 @@ KUBECTL_CFG_CMD=kubectl-cfg-command
 TMPL_RESOLVER_AWS_CDK=resolve_aws_templates.go
 TMPL_RESOLVER_OTEL=resolve_otel_templates.go
 
+KARPENTER_VERSION=0.36.1
+KARPENTER_NAMESPACE=kube-system
+
 .PHONY: build
 .SILENT: build
 build: mdai-install
@@ -123,7 +126,12 @@ realclean:
 
 .PHONY: install
 .SILENT: install
+ifeq ($(KARPENTER),true)
+install: npm-init bootstrap cdk kubectl-config set-role-map karpenter
+else
 install: npm-init bootstrap cdk kubectl-config set-role-map
+endif
+
 
 .PHONY: cert-gen
 .SILENT: cert-gen
@@ -140,3 +148,50 @@ cert-gen: config-aws
 .PHONY: cert
 .SILENT: cert
 cert: cert-gen config
+
+.PHONY: karpenter
+karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-helm karpenter-nodeclass
+
+.PHONY: karpenter-tag-sg
+karpenter-tag-sg:
+	@SECURITY_GROUPS=$(shell aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --profile ${AWS_PROFILE}) && \
+	aws ec2 create-tags --tags "Key=karpenter.sh/discovery,Value=${MDAI_CLUSTER_NAME}" --resources $${SECURITY_GROUPS} --profile ${AWS_PROFILE}
+
+.PHONY: karpenter-update-aws-auth
+karpenter-update-aws-auth:
+	eksctl create iamidentitymapping --cluster DecisiveEngineCluster --username system:node:{{EC2PrivateDNSName}} \
+	--group system:bootstrappers,system:nodes --arn arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterNodeRole-${MDAI_CLUSTER_NAME} \
+	--profile ${AWS_PROFILE}
+
+.PHONY: karpenter-crd
+karpenter-crd:
+	kubectl create namespace "${KARPENTER_NAMESPACE}" || true
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodepools.yaml"
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml"
+	kubectl apply -f "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
+
+.PHONY: karpenter-helm
+karpenter-helm:
+	@NODEGROUP=$(shell aws eks list-nodegroups --cluster-name "${MDAI_CLUSTER_NAME}" --query 'nodegroups[0]' --output text --profile ${AWS_PROFILE}) && \
+	helm upgrade -i karpenter oci://public.ecr.aws/karpenter/karpenter --version ${KARPENTER_VERSION} --namespace ${KARPENTER_NAMESPACE} \
+        --set settings.clusterName=${MDAI_CLUSTER_NAME} \
+        --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-DecisiveEngineCluster" \
+        --set-json "affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution={\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"karpenter.sh/nodepool\",\"operator\":\"DoesNotExist\"}]},{\"matchExpressions\":[{\"key\":\"eks.amazonaws.com/nodegroup\",\"operator\":\"In\",\"values\":[\""$${NODEGROUP}"\"]}]}]}" \
+        --set controller.resources.requests.cpu=250m \
+        --set controller.resources.requests.memory=250Mi \
+        --set controller.resources.limits.cpu=500m \
+        --set controller.resources.limits.memory=500Mi
+
+.PHONY: karpenter-nodeclass
+karpenter-nodeclass:
+	touch .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id && \
+	aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query cluster.version --out text --profile ${AWS_PROFILE} > .k8s_version && \
+	echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2-arm64/recommended/image_id" > .arm_ami_parameter_name && \
+    echo "/aws/service/eks/optimized-ami/`cat .k8s_version`/amazon-linux-2/recommended/image_id" > .amd_ami_parameter_name && \
+	aws ssm get-parameter --name `cat .arm_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .arm_ami_id && \
+	aws ssm get-parameter --name `cat .amd_ami_parameter_name` --query Parameter.Value --output text --profile ${AWS_PROFILE} > .amd_ami_id
+	export ARM_AMI_ID=`cat .arm_ami_id`&& export AMD_AMI_ID=`cat .amd_ami_id` && \
+	cat templates/karpenter-ec2nodeclass.yaml | envsubst > templates/karpenter-ec2nodeclass-values.yaml && \
+	rm .k8s_version .arm_ami_parameter_name .arm_ami_id .amd_ami_parameter_name .amd_ami_id
+	kubectl apply -f templates/karpenter-nodepool.yaml
+	kubectl apply -f templates/karpenter-ec2nodeclass-values.yaml
