@@ -6,6 +6,11 @@ metadata:
     # add certificate arn for non-grpc endpoint
     service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:us-east-1:012345678901:certificate/th15-15-@n-@ut0g3n3r@ted-numb3r # TODO: CHANGE ME TO A REAL ARN!!!
 spec:
+  autoscaler:
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilization: 90
+    targetMemoryUtilization: 90  
   ingress:
     annotations:
       # MUST BE SPECIFIED!
