@@ -1,0 +1,74 @@
+apiVersion: mydecisive.ai/v1
+kind: MyDecisiveEngine
+metadata:
+  labels:
+    app.kubernetes.io/name: mydecisiveengine
+    app.kubernetes.io/instance: mydecisiveengine-sample
+    app.kubernetes.io/part-of: mydecisive-engine-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: mydecisive-engine-operator
+  name: mydecisiveengine-sample-1
+spec:
+  telemetryModule:
+    attributes:
+      name: "telemetry"
+      version: "0.0.1"
+    collectors:
+      -
+        name: "test-collector"
+        enabled: true
+        measureVolumes: true
+        spec:
+          replicas: 2
+          ports:
+            - name: promexporter
+              port: 9464
+              protocol: TCP
+            - name: metrics
+              port: 8888
+              protocol: TCP
+            - name: metrics-1
+              port: 4317
+          config: |
+            receivers:
+              hostmetrics:
+                collection_interval: 23s
+                scrapers:
+                  load:
+                  filesystem:
+                  memory:
+                  network:
+                  paging:
+                  processes:
+                  process:
+              otlp:
+                protocols:
+                  grpc:
+                    endpoint: "0.0.0.0:4317"
+            processors:
+              resource:
+                attributes:
+                - key: service.instance.id
+                  from_attribute: k8s.pod.uid
+                  action: insert
+
+            exporters:
+              debug: 
+                verbosity: detailed
+                sampling_initial: 2
+                sampling_thereafter: 100
+
+            service:
+              pipelines:
+                traces:
+                  receivers: [otlp]
+                  processors: [resource]
+                  exporters: [debug]
+                metrics:
+                  receivers: [hostmetrics, otlp]
+                  processors: [resource]
+                  exporters: [debug]
+                logs:
+                  receivers: [otlp]
+                  processors: [resource]
+                  exporters: [debug]

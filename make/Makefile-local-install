@@ -21,6 +21,7 @@ mdai-system-reqs:
 mdai-add-helm-charts:
 	@echo "🟢 Start mdai-add-helm-charts..."
 	@helm repo list | grep prometheus-community || helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	@helm repo list | grep cert-manager || helm repo add jetstack https://charts.jetstack.io
 	@helm repo list | grep mydecisive || helm repo add mydecisive https://decisiveai.github.io/mdai-helm-charts
 	@echo "✅ Complete mdai-add-helm-charts!"
 
@@ -30,8 +31,9 @@ mdai-add-helm-charts:
 mdai-install-helm-charts:
 	@echo "🟢 Start mdai-install-helm-charts..."
 	helm repo update
-	helm upgrade -f ./templates/prometheus-values.yaml prometheus prometheus-community/prometheus --install --wait
-	helm upgrade opentelemetry-operator mydecisive/opentelemetry-operator --install --set admissionWebhooks.certManager.enabled=false --set admissionWebhooks.certManager.autoGenerateCert=true --wait --set manager.image.repository=public.ecr.aws/p3k6k6h3/opentelemetry-operator --set manager.image.tag=latest --set leaderElection.enabled=false --version 0.43.1
+	helm upgrade cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.14.5 --set installCRDs=true --install --wait
+	helm upgrade opentelemetry-operator mydecisive/opentelemetry-operator --namespace opentelemetry-operator-system --create-namespace --install --set manager.image.repository=public.ecr.aws/p3k6k6h3/opentelemetry-operator --set manager.image.tag=latest --set leaderElection.enabled=false --version 0.43.1 --wait
+	helm upgrade prometheus prometheus-community/prometheus --install -f ./templates/prometheus-values.yaml
 	helm upgrade mdai-api mydecisive/mdai-api --version 0.0.3 --install
 	helm upgrade mdai-console mydecisive/mdai-console --version 0.0.6 --install
 	helm upgrade datalyzer mydecisive/datalyzer --version 0.0.1 --install
@@ -57,15 +59,20 @@ mdai-install-cluster-dependencies: \
 .PHONY: mdai-wait-for-pods
 mdai-wait-for-pods:
 	@echo "🟢 Start mdai-wait-for-pods..."
-	kubectl -n default wait --for condition=ready pod -l app.kubernetes.io/name=opentelemetry-operator
-	kubectl -n default wait --for condition=ready pod -l app.kubernetes.io/component=controller-manager
+	kubectl -n opentelemetry-operator-system wait --timeout=30s --for condition=ready pod -l app.kubernetes.io/name=opentelemetry-operator
+	kubectl -n opentelemetry-operator-system wait --timeout=30s --for condition=ready pod -l app.kubernetes.io/component=controller-manager
+	kubectl -n opentelemetry-operator-system wait --timeout=30s --for condition=established crd opentelemetrycollectors.opentelemetry.io
+	kubectl -n cert-manager wait --timeout=30s --for condition=ready pod -l app.kubernetes.io/name=cert-manager
+	kubectl -n cert-manager wait --timeout=30s --for condition=ready pod -l app.kubernetes.io/name=webhook
 	@echo "✅ Complete mdai-wait-for-pods!"
 
-# deploy collector config
-.SILENT: mdai-deploy-config
-.PHONY: mdai-deploy-config
-mdai-deploy-config:
-	kubectl apply -f ./lib/otelcol.yaml
+# deploy mdai operator
+.SILENT: mdai-deploy-operator
+.PHONY: mdai-deploy-operator
+mdai-deploy-operator:
+	helm upgrade mydecisive-engine-operator mydecisive/mydecisive-engine-operator --namespace mydecisive-engine-operator-system --create-namespace --install --wait
+	kubectl wait --timeout=30s --for condition=established crd mydecisiveengines.mydecisive.ai
+	kubectl apply -f templates/mdai_operator.yaml
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ LOCAL INSTALL RECIPE ~~~~~~~~~~~~~~~~~~~~
@@ -73,8 +80,8 @@ mdai-deploy-config:
 
 .SILENT: install-all
 .PHONY: install-all
-install-all: create-mdai-cluster mdai-install-cluster-dependencies mdai-wait-for-pods mdai-deploy-config
+install-all: create-mdai-cluster mdai-install-cluster-dependencies mdai-wait-for-pods mdai-deploy-operator
 
 SILENT: install-all-semi-auto
 .PHONY: install-all-semi-auto
-install-all-semi-auto: create-mdai-cluster mdai-add-helm-charts mdai-install-helm-charts mdai-wait-for-pods mdai-deploy-config
+install-all-semi-auto: create-mdai-cluster mdai-add-helm-charts mdai-install-helm-charts mdai-wait-for-pods mdai-deploy-operator
