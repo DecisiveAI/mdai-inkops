@@ -9,12 +9,8 @@
 .PHONY: mdai-system-reqs
 mdai-system-reqs:
 	@echo "🟢 Start mdai-system-reqs..."
-	@go version || brew list go || brew install go \
-		kubectl version || brew list kubectl || brew install kubectl \
-		npm -v || brew list npm || brew install npm \
-		cdk version || brew list aws-cdk || brew install aws-cdk \
+	@kubectl version || brew list kubectl || brew install kubectl \
 		docker -v || brew list --cask docker || brew install --cask docker \
-		docker pull otel/opentelemetry-collector:0.95.0 \
 		helm version || brew list helm || brew install helm \
 		kind version || brew list kind || brew install kind
 	@echo "✅ Complete mdai-system-reqs!"
