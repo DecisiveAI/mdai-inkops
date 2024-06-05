@@ -14,6 +14,13 @@ delete-mdai:
 	@$(MAKE) -f ./make/Makefile-local-uninstall uninstall-all
 	@echo "🪦 Destroy MDAI Engine completed successfully!"
 
+.SILENT: create-mdai-semi-auto
+.PHONY: create-mdai-semi-auto
+create-mdai-semi-auto:
+	@echo "🏁 Create MDAI Engine: Semi-auto started..."
+	@time $(MAKE) -f ./make/Makefile-local-install install-all-semi-auto
+	@echo "🐙 Create MDAI Engine: Semi-auto completed successfully!"
+
 .SILENT: delete-mdai-all
 .PHONY: delete-mdai-all
 delete-mdai-all:
