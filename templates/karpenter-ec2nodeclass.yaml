@@ -4,7 +4,7 @@ metadata:
   name: default
 spec:
   amiFamily: AL2
-  role: "KarpenterNodeRole-${MDAI_CLUSTER_NAME}"
+  role: "KarpenterNodeRole--${MDAI_CLUSTER_NAME}-${AWS_REGION}"
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${MDAI_CLUSTER_NAME}"

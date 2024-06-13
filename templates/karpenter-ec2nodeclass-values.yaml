@@ -4,7 +4,7 @@ metadata:
   name: default
 spec:
   amiFamily: AL2
-  role: "KarpenterNodeRole-DecisiveEngineCluster"
+  role: "KarpenterNodeRole-DecisiveEngineCluster--${MDAI_CLUSTER_NAME}-${AWS_REGION}"
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: "DecisiveEngineCluster"
