@@ -69,12 +69,12 @@ func addRoleMapping(roleArn string) error {
 	}
 
 	mapRolesBytes, err = json.Marshal(mapRoles)
-
-	cM.Data["mapRoles"] = string(mapRolesBytes)
-
-	cM, err = clientset.CoreV1().ConfigMaps("kube-system").Update(context.TODO(), cM, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
-	return nil
+
+	cM.Data["mapRoles"] = string(mapRolesBytes)
+
+	_, err = clientset.CoreV1().ConfigMaps("kube-system").Update(context.TODO(), cM, metav1.UpdateOptions{})
+	return err
 }

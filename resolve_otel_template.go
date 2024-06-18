@@ -69,8 +69,12 @@ func parseOtel(tfn, cfn, pfn, ofn string) error {
 	}
 
 	var v1, v2 yaml.Node
-	yaml.Unmarshal(tf, &v1)
-	yaml.Unmarshal(vf, &v2)
+	if err := yaml.Unmarshal(tf, &v1); err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(vf, &v2); err != nil {
+		return err
+	}
 	if err := recursiveMerge(&v1, &v2); err != nil {
 		return err
 	}
@@ -83,10 +87,10 @@ func parseOtel(tfn, cfn, pfn, ofn string) error {
 		return err
 	}
 	e := yaml.NewEncoder(of)
-	e.Encode(&v2)
-	e.Close()
-
-	return nil
+	if err := e.Encode(&v2); err != nil {
+		return err
+	}
+	return e.Close()
 }
 
 func composeConfig(cfgB []byte) (yaml.Node, error) {
@@ -103,8 +107,7 @@ func composeConfig(cfgB []byte) (yaml.Node, error) {
 	if err != nil {
 		return cfgN, err
 	}
-	err = yaml.Unmarshal(crB, &cfgN)
-	if err != nil {
+	if err = yaml.Unmarshal(crB, &cfgN); err != nil {
 		return cfgN, err
 	}
 	return cfgN, nil

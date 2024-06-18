@@ -51,6 +51,11 @@ config-aws: dot-env
 config-otel: build
 	./mdai-install otel;
 
+.PHONY: config-mdai
+.SILENT: config-mdai
+config-mdai:
+	envsubst < templates/mdai-operator.yaml > lib/mdai-operator.yaml
+
 .PHONY: go-mod
 .SILENT: go-mod
 go-mod:

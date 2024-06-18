@@ -1,6 +1,7 @@
 apiVersion: mydecisive.ai/v1
 kind: MyDecisiveEngine
 metadata:
+  namespace: default
   labels:
     app.kubernetes.io/name: mydecisiveengine
     app.kubernetes.io/instance: mydecisiveengine-sample
@@ -14,11 +15,31 @@ spec:
       name: "telemetry"
       version: "0.0.1"
     collectors:
-      -
-        name: "test-collector"
+      - name: "test-collector"
         enabled: true
         measureVolumes: true
         spec:
+          ingress:
+            annotations:
+              # MUST BE SPECIFIED!
+              # add certificate arn (or multiple certificates arn, comma separated) for the grpc endpoints
+              alb.ingress.kubernetes.io/certificate-arn: $MDAI_UI_ACM_ARN
+              alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+              alb.ingress.kubernetes.io/load-balancer-name: mdai-grpc-endpoint
+              alb.ingress.kubernetes.io/backend-protocol-version: GRPC
+              alb.ingress.kubernetes.io/scheme: internet-facing
+              alb.ingress.kubernetes.io/target-type: ip
+              kubernetes.io/ingress.class: alb
+            # this section is required if collector has grpc endpoints (receivers).
+            # for each enabled grpc receiver receivername -> hostname mapping should be provided
+            # these hostnames must be CNAMEs for corresponding ALB public address and will be used
+            # for connectivity to the corresponding collector receiver
+            collectorEndpoints:
+              otlp: otlp.grpc.endpoint.collector.your-domain.io
+              jaeger: jaeger.grpc.endpoint.collector.your-domain.io
+            ingressClassName: alb
+            ruleType: path
+            type: aws
           replicas: 2
           ports:
             - name: promexporter
@@ -27,7 +48,7 @@ spec:
             - name: metrics
               port: 8888
               protocol: TCP
-            - name: metrics-1
+            - name: otlp-grpc
               port: 4317
           config: |
             receivers:
@@ -45,19 +66,19 @@ spec:
                 protocols:
                   grpc:
                     endpoint: "0.0.0.0:4317"
+                  http:
+                    endpoint: "0.0.0.0:4318"
             processors:
               resource:
                 attributes:
                 - key: service.instance.id
                   from_attribute: k8s.pod.uid
                   action: insert
-
             exporters:
               debug: 
                 verbosity: detailed
                 sampling_initial: 2
                 sampling_thereafter: 100
-
             service:
               pipelines:
                 traces:
