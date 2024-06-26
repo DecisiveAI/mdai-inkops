@@ -22,3 +22,4 @@ values/*
 
 
 .DS_Store
+./templates/karpenter-ec2nodeclass-values.yaml

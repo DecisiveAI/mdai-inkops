@@ -142,8 +142,9 @@ cert-gen: config-aws
 	echo "MDAI_UI_ACM_ARN=$${ACM_ARN}" >> .env; \
 	sed  -i .tmp -E "s|(service.beta.kubernetes.io\/aws-load-balancer-ssl-cert: )[^#]*( #.*){0,1}|\1$${ACM_ARN}\2|; s|(alb.ingress.kubernetes.io\/certificate-arn: )[^#]*( #.*){0,1}|\1$${ACM_ARN}\2|" ${PARAMS_OTEL_FILE} && \
 	rm ${PARAMS_OTEL_FILE}.tmp ; \
-	echo "Copy your cert's ARN for your records: $${ACM_ARN}"; \
-	rm -f /tmp/certificate_mdai.crt /tmp/private_mdai.key
+	echo "If desired, copy your cert's ARN for your records: $${ACM_ARN}"; \
+	echo "You can view your cert here: https://${AWS_REGION}.console.aws.amazon.com/acm/home?region=${AWS_REGION}#/certificates/list" ; \
+	rm -f /tmp/certificate_mdai.crt /tmp/private_mdai.key ; \
 
 .PHONY: cert
 .SILENT: cert
@@ -154,14 +155,14 @@ karpenter: karpenter-tag-sg karpenter-update-aws-auth karpenter-crd karpenter-he
 
 .PHONY: karpenter-tag-sg
 karpenter-tag-sg:
-	@SECURITY_GROUPS=$(shell aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --profile ${AWS_PROFILE}) && \
-	aws ec2 create-tags --tags "Key=karpenter.sh/discovery,Value=${MDAI_CLUSTER_NAME}" --resources $${SECURITY_GROUPS} --profile ${AWS_PROFILE}
+	@SECURITY_GROUPS=$(shell aws eks describe-cluster --name ${MDAI_CLUSTER_NAME} --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --profile ${AWS_PROFILE} --region ${AWS_REGION}) && \
+	aws ec2 create-tags --tags "Key=karpenter.sh/discovery,Value=${MDAI_CLUSTER_NAME}" --resources $${SECURITY_GROUPS} --profile ${AWS_PROFILE} --region ${AWS_REGION}
 
 .PHONY: karpenter-update-aws-auth
 karpenter-update-aws-auth:
-	eksctl create iamidentitymapping --cluster DecisiveEngineCluster --username system:node:{{EC2PrivateDNSName}} \
-	--group system:bootstrappers,system:nodes --arn arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterNodeRole-${MDAI_CLUSTER_NAME} \
-	--profile ${AWS_PROFILE}
+	eksctl create iamidentitymapping --cluster ${MDAI_CLUSTER_NAME} --username system:node:{{EC2PrivateDNSName}} \
+	--group system:bootstrappers,system:nodes --arn arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterNodeRole-${MDAI_CLUSTER_NAME}-${AWS_REGION} \
+	--profile ${AWS_PROFILE} --region ${AWS_REGION}
 
 .PHONY: karpenter-crd
 karpenter-crd:
@@ -175,8 +176,8 @@ karpenter-helm:
 	@NODEGROUP=$(shell aws eks list-nodegroups --cluster-name "${MDAI_CLUSTER_NAME}" --query 'nodegroups[0]' --output text --profile ${AWS_PROFILE}) && \
 	helm upgrade -i karpenter oci://public.ecr.aws/karpenter/karpenter --version ${KARPENTER_VERSION} --namespace ${KARPENTER_NAMESPACE} \
         --set settings.clusterName=${MDAI_CLUSTER_NAME} \
-        --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-DecisiveEngineCluster" \
-        --set-json "affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution={\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"karpenter.sh/nodepool\",\"operator\":\"DoesNotExist\"}]},{\"matchExpressions\":[{\"key\":\"eks.amazonaws.com/nodegroup\",\"operator\":\"In\",\"values\":[\""$${NODEGROUP}"\"]}]}]}" \
+        --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-${MDAI_CLUSTER_NAME}-${AWS_REGION}" \
+        --set-json "affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution={\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"karpenter.sh/kubectl createkubectl createnodepool\",\"operator\":\"DoesNotExist\"}]},{\"matchExpressions\":[{\"key\":\"eks.amazonaws.com/nodegroup\",\"operator\":\"In\",\"values\":[\""$${NODEGROUP}"\"]}]}]}" \
         --set controller.resources.requests.cpu=250m \
         --set controller.resources.requests.memory=250Mi \
         --set controller.resources.limits.cpu=500m \
