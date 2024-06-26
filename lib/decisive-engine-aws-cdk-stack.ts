@@ -131,11 +131,37 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     // The userDataScript below is not tested, more details https://trying2adult.com/what-is-xdp-and-how-do-you-use-it-in-linux-amazon-ec2-example/
     // mtu 3818 is not correct, should be 3498
     // ens5 is default network interface
-    const userDataScript = `#!/bin/bash -xe
-sudo /etc/eks/bootstrap.sh --apiserver-endpoint '${clusterEndpoint}' --b64-cluster-ca '${clusterCertificateAuthorityData}' '${clusterName}'
-sudo ip link set dev ens5 mtu 3498
-sudo ethtool -L ens5 combined 1
-`;
+    const userDataScript = `
+Content-Type: multipart/mixed; boundary="//"
+MIME-Version: 1.0
+
+--//
+Content-Type: text/cloud-config; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="cloud-config.txt"
+
+#cloud-config
+cloud_final_modules:
+- [scripts-user, always]
+
+--//
+Content-Type: text/x-shellscript; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="userdata.txt"
+
+#!/bin/bash
+
+for i in $(ip -o link show | awk -F': ' '{print $2}' | grep -Ev '(^lo|^eni)')
+do 
+        echo -ne "$i\n"
+        ip link set dev $i mtu 3498
+        ethtool -L $i combined 1
+done
+--//--
+    `;
+
 
     const launchTemplate = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
       launchTemplateName: 'UbuntuLaunchTemplate',
