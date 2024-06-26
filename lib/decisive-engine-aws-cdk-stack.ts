@@ -71,6 +71,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
       },
       MDAI_COGNITO: {
+        ENABLE: process.env.COGNITO,
         UI_HOSTNAME: process.env.MDAI_UI_HOSTNAME || "console.mydecisive.ai",
         USER_POOL_DOMAIN: process.env.MDAI_UI_USER_POOL_DOMAIN || "mydecisive",
       },
@@ -253,57 +254,68 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiApi.node.addDependency(prometheus);
 
-    const mdaiUserPool = new cognito.UserPool(this, 'mdai-user-pool', {
-      userPoolName: 'mdai-user-pool',
-      signInAliases: {
-        email: true,
-      },
-      selfSignUpEnabled: false,
-      autoVerify: {
-        email: true,
-      },
-      userVerification: {
-        emailSubject: 'You need to verify your email',
-        emailBody: 'Thanks for signing up Your verification code is {####}', // # This placeholder is a must if code is selected as preferred verification method
-        emailStyle: cognito.VerificationEmailStyle.CODE,
-      },
-      passwordPolicy: {
-        minLength: 8,
-        requireLowercase: true,
-        requireUppercase: true,
-        requireDigits: true,
-        requireSymbols: false,
-      },
-      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-    mdaiUserPool.node.addDependency(mdaiApi);
+    let mdaiAppClient, consoleIngress = {};
 
-    const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
-      cognitoDomain: {
-        domainPrefix: config.MDAI_COGNITO.USER_POOL_DOMAIN,
-      },
-    });
-
-    const mdaiAppClient = mdaiUserPool.addClient('mdai-app-client', {
-      userPoolClientName: 'mdai-app-client',
-      authFlows: {
-        userPassword: true,
-      },
-      generateSecret: true,
-      oAuth: {
-        flows: {
-          authorizationCodeGrant: true,
+    if (config.MDAI_COGNITO.ENABLE) {
+      const mdaiUserPool = new cognito.UserPool(this, 'mdai-user-pool', {
+        userPoolName: 'mdai-user-pool',
+        signInAliases: {
+          email: true,
         },
-        scopes: [cognito.OAuthScope.EMAIL],
-        callbackUrls: [
-          `https://${config.MDAI_COGNITO.UI_HOSTNAME}/oauth2/idpresponse`,
-        ],
-      },
-    });
-    mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
+        selfSignUpEnabled: false,
+        autoVerify: {
+          email: true,
+        },
+        userVerification: {
+          emailSubject: 'You need to verify your email',
+          emailBody: 'Thanks for signing up Your verification code is {####}', // # This placeholder is a must if code is selected as preferred verification method
+          emailStyle: cognito.VerificationEmailStyle.CODE,
+        },
+        passwordPolicy: {
+          minLength: 8,
+          requireLowercase: true,
+          requireUppercase: true,
+          requireDigits: true,
+          requireSymbols: false,
+        },
+        accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      });
+      mdaiUserPool.node.addDependency(mdaiApi);
 
-    const mdaiConsole = cluster.addHelmChart("mdai-console", {
+      const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
+        cognitoDomain: {
+          domainPrefix: config.MDAI_COGNITO.USER_POOL_DOMAIN,
+        },
+      });
+
+
+      const mdaiAppClient = mdaiUserPool.addClient('mdai-app-client', {
+        userPoolClientName: 'mdai-app-client',
+        authFlows: {
+          userPassword: true,
+        },
+        generateSecret: true,
+        oAuth: {
+          flows: {
+            authorizationCodeGrant: true,
+          },
+          scopes: [cognito.OAuthScope.EMAIL],
+          callbackUrls: [
+            `https://${config.MDAI_COGNITO.UI_HOSTNAME}/oauth2/idpresponse`,
+          ],
+        },
+      });
+      mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
+
+      consoleIngress = {
+        'userPoolArn': mdaiUserPool.userPoolArn,
+        'userPoolClientId': mdaiAppClient.userPoolClientId,
+        'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
+      };
+    }
+
+    const consoleConfig = {
       chart: config.MDAI_CONSOLE.CHART,
       repository: config.MDAI_CONSOLE.REPO,
       namespace: config.MDAI_CONSOLE.NAMESPACE,
@@ -312,17 +324,17 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       version: config.MDAI_CONSOLE.VERSION,
       wait: true,
       values: {
-        'ingress': {
-          'userPoolArn': mdaiUserPool.userPoolArn,
-          'userPoolClientId': mdaiAppClient.userPoolClientId,
-          'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
-        },
+        'ingress': consoleIngress,
         'env': {
           'MDAI_UI_ACM_ARN': process.env.MDAI_UI_ACM_ARN,
         }
       }
-    });
-    mdaiConsole.node.addDependency(mdaiAppClient);
+    };
+
+    const mdaiConsole = cluster.addHelmChart("mdai-console", consoleConfig);
+    if (config.MDAI_COGNITO.ENABLE && mdaiAppClient) {
+      mdaiConsole.node.addDependency(mdaiAppClient);
+    } 
 
     //
     //    Karpenter
@@ -332,8 +344,9 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     if (config.KARPENTER.ENABLE === 'true') {
       const karpenterNodeRole = new iam.Role(
           this,
-          'KarpenterNodeRole-' + config.CLUSTER.NAME, {
-            roleName: 'KarpenterNodeRole-' + config.CLUSTER.NAME,
+          `KarpenterNodeRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`, 
+          {
+            roleName: `KarpenterNodeRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
             managedPolicies: [
               iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
@@ -341,13 +354,14 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
               iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
               iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
             ],
-          });
+          }
+      );
 
 
       new iam.InstanceProfile(
           this,
-          'KarpenterNodeInstanceProfile', {
-            instanceProfileName: 'KarpenterNodeInstanceProfile',
+          `KarpenterNodeInstanceProfile-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`, {
+            instanceProfileName: `KarpenterNodeInstanceProfile-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`,
             role: karpenterNodeRole,
           });
 
@@ -361,8 +375,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
       const karpenterControllerRole = new iam.Role(
           this,
-          'KarpenterControllerRole-' + config.CLUSTER.NAME, {
-            roleName: 'KarpenterControllerRole-' + config.CLUSTER.NAME,
+          `KarpenterControllerRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`, {
+            roleName: `KarpenterControllerRole-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`,
             assumedBy: new iam.FederatedPrincipal(`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
                   'StringEquals': conditions
                 },
@@ -393,7 +407,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         },
       });
 
-      const karpenterControllerPolicy = new iam.Policy(this, 'KarpenterControllerPolicy', {
+      const karpenterControllerPolicy = new iam.Policy(this, `KarpenterControllerPolicy-${config.CLUSTER.NAME}-${process.env.AWS_REGION}`, {
         statements: [
           new iam.PolicyStatement({
             resources: ['*'],

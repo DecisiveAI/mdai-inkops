@@ -4,7 +4,7 @@ metadata:
   annotations:
     # MUST BE SPECIFIED!
     # add certificate arn for non-grpc endpoint
-    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:us-west-2:168005146325:certificate/7ced7565-db73-4643-843a-676782b9208b # TODO: CHANGE ME TO A REAL ARN!!!
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:<AWS_REGION>:012345678901:certificate/th15-15-@n-@ut0g3n3r@ted-numb3r # TODO: CHANGE ME TO A REAL ARN!!!
 spec:
   autoscaler:
     maxReplicas: 4
@@ -15,7 +15,7 @@ spec:
     annotations:
       # MUST BE SPECIFIED!
       # add certificate arn (or multiple certificates arn, comma separated) for the grpc endpoints
-      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:168005146325:certificate/7ced7565-db73-4643-843a-676782b9208b # TODO: CHANGE ME TO A REAL ARN!!!
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:<AWS_REGION>:012345678901:certificate/th15-15-@n-@ut0g3n3r@ted-numb3r # TODO: CHANGE ME TO A REAL ARN!!!
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
     # this section is required if collector has grpc endpoints (receivers).
     # for each enabled grpc receiver receivername -> hostname mapping should be provided
