@@ -64,7 +64,7 @@ describe('DecisiveEngine', () => {
                     Namespace: 'default',
                     CreateNamespace: true,
                     Release: 'prometheus',
-                    Version: '25.11.0',
+                    Version: '25.21.0',
                     Wait: true,
                     Values: '{"prometheus":{"enabled":true},"alertmanager":{"enabled":false},"configmapReload":{"prometheus":{"enabled":false}},"kube-state-metrics":{"enabled":true},"prometheus-node-exporter":{"enabled":false},"prometheus-pushgateway":{"enabled":false},"server":{"retention":"3d","extraFlags":["enable-feature=exemplar-storage","enable-feature=otlp-write-receiver","enable-feature=promql-experimental-functions"],"global":{"scrape_interval":"10s","scrape_timeout":"5s","evaluation_interval":"30s"},"persistentVolume":{"enabled":false,"storageClass":"-","volumeName":"prometheus-pv","size":"5Gi"},"service":{"servicePort":9090},"resources":{"limits":{"memory":"300Mi"}}},"serverFiles":{"prometheus.yml":{"scrape_configs":[{"job_name":"otel-collector","honor_labels":true,"tls_config":{"insecure_skip_verify":true},"kubernetes_sd_configs":[{"role":"pod"}],"relabel_configs":[{"source_labels":["__meta_kubernetes_pod_label_app_kubernetes_io_component","__meta_kubernetes_pod_annotation_prometheus_io_scrape"],"separator":";","regex":"opentelemetry-collector;true","action":"keep"},{"source_labels":["__address__"],"regex":".*:(431[78]|14250)","action":"drop"}]}]}}}',
                 })
@@ -89,7 +89,7 @@ describe('DecisiveEngine', () => {
                     Namespace: 'default',
                     CreateNamespace: true,
                     Release: 'mdai-console',
-                    Version: '0.0.6-cognito',
+                    Version: '0.1.1',
                     Wait: true,
                 })
             )
@@ -106,12 +106,23 @@ describe('DecisiveEngine', () => {
                 })
             )
         })
+        it('should have a Metrics Server Helm chart', () => {
+            template.hasResourceProperties('Custom::AWSCDK-EKS-HelmChart',
+                Match.objectLike({
+                    Repository: 'https://kubernetes-sigs.github.io/metrics-server/',
+                    Namespace: 'kube-system',
+                    Release: 'metrics-server',
+                    Version: '3.12.1',
+                    Wait: true,
+                })
+            )
+        })
     })
     describe('Kubernetes resources', () => {
         it('should have resources', () => {
             template.resourceCountIs('AWS::EKS::Nodegroup', 1)
             template.resourceCountIs('AWS::EC2::VPC', 1)
-            template.resourceCountIs('Custom::AWSCDK-EKS-HelmChart', 7)
+            template.resourceCountIs('Custom::AWSCDK-EKS-HelmChart', 8)
             template.resourceCountIs('AWS::EC2::Subnet', 4)
             template.resourceCountIs('AWS::EC2::NatGateway', 2)
             template.resourceCountIs('AWS::EC2::InternetGateway', 1)

@@ -6,7 +6,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as yaml from 'js-yaml';
 import { readFileSync } from 'fs';
 import { Construct } from 'constructs';
-import { KubectlV28Layer } from '@aws-cdk/lambda-layer-kubectl-v28';
+import { KubectlV30Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v30';
 import * as path from 'path';
 import 'dotenv/config'
 
@@ -44,7 +44,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       PROMETHEUS: {
         NAMESPACE: 'default',
         REPO: 'https://prometheus-community.github.io/helm-charts',
-        VERSION: process.env.MDAI_PROMETHEUS_VERSION || '25.11.0',
+        VERSION: process.env.MDAI_PROMETHEUS_VERSION || '25.21.0',
         CHART: 'prometheus',
         RELEASE: 'prometheus',
       },
@@ -65,7 +65,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       MDAI_CONSOLE: {
         NAMESPACE: "default",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.0.6-cognito",
+        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.1.1",
         CHART: "mdai-console",
         RELEASE: "mdai-console",
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
@@ -98,8 +98,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
     const cluster = new eks.Cluster(this, config.CLUSTER.NAME, {
       clusterName: config.CLUSTER.NAME,
-      version: eks.KubernetesVersion.V1_28,
-      kubectlLayer: new KubectlV28Layer(this, 'kubectl'),
+      version: eks.KubernetesVersion.V1_30,
+      kubectlLayer: new KubectlLayer(this, 'kubectl'),
       mastersRole: engineMasterRole,
       defaultCapacity: config.CLUSTER.CAPACITY,
       defaultCapacityInstance: ec2.InstanceType.of(
@@ -309,6 +309,11 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
 
       consoleIngress = {
+        'enabled': true,
+        'cognito': {
+          'enabled': config.MDAI_COGNITO.ENABLE === 'true' ? true : false,
+        },
+        'acmArn': process.env.MDAI_UI_ACM_ARN,
         'userPoolArn': mdaiUserPool.userPoolArn,
         'userPoolClientId': mdaiAppClient.userPoolClientId,
         'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
@@ -325,9 +330,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       wait: true,
       values: {
         'ingress': consoleIngress,
-        'env': {
-          'MDAI_UI_ACM_ARN': process.env.MDAI_UI_ACM_ARN,
-        }
       }
     };
 
