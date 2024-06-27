@@ -173,7 +173,7 @@ karpenter-crd:
 
 .PHONY: karpenter-helm
 karpenter-helm:
-	@NODEGROUP=$(shell aws eks list-nodegroups --cluster-name "${MDAI_CLUSTER_NAME}" --query 'nodegroups[0]' --output text --profile ${AWS_PROFILE}) && \
+	@NODEGROUP=$(shell aws eks list-nodegroups --cluster-name "${MDAI_CLUSTER_NAME}" --query 'nodegroups[0]' --output text --profile ${AWS_PROFILE} --region ${AWS_REGION}) && \
 	helm upgrade -i karpenter oci://public.ecr.aws/karpenter/karpenter --version ${KARPENTER_VERSION} --namespace ${KARPENTER_NAMESPACE} \
         --set settings.clusterName=${MDAI_CLUSTER_NAME} \
         --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::${AWS_ACCOUNT}:role/KarpenterControllerRole-${MDAI_CLUSTER_NAME}-${AWS_REGION}" \
