@@ -42,7 +42,7 @@ func runKubectlCfg(cdkOutput, kubectlCfgCommand string) (err error) {
 	}
 
 	for k := range keysValues {
-		if strings.Contains(k, "ClusterConfigCommand") {
+		if strings.Contains(k, "ConfigCommand") {
 			outFile.WriteString(keysValues[k].(string))
 			fmt.Println(keysValues[k])
 		}
