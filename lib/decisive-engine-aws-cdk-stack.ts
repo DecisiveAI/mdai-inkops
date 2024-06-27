@@ -310,6 +310,9 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
       consoleIngress = {
         'enabled': true,
+        'cognito': {
+          'enabled': config.MDAI_COGNITO.ENABLE === 'true' ? true : false,
+        },
         'acmArn': process.env.MDAI_UI_ACM_ARN,
         'userPoolArn': mdaiUserPool.userPoolArn,
         'userPoolClientId': mdaiAppClient.userPoolClientId,
