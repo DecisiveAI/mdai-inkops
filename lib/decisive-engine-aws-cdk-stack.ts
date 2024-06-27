@@ -65,7 +65,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       MDAI_CONSOLE: {
         NAMESPACE: "default",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.1.0",
+        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.1.1",
         CHART: "mdai-console",
         RELEASE: "mdai-console",
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
@@ -309,6 +309,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       mdaiAppClient.node.addDependency(mdaiUserPoolDomain);
 
       consoleIngress = {
+        'enabled': true,
+        'acmArn': process.env.MDAI_UI_ACM_ARN,
         'userPoolArn': mdaiUserPool.userPoolArn,
         'userPoolClientId': mdaiAppClient.userPoolClientId,
         'userPoolDomain': config.MDAI_COGNITO.USER_POOL_DOMAIN,
@@ -325,9 +327,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       wait: true,
       values: {
         'ingress': consoleIngress,
-        'env': {
-          'MDAI_UI_ACM_ARN': process.env.MDAI_UI_ACM_ARN,
-        }
       }
     };
 
