@@ -16,14 +16,6 @@ type Eks struct {
 }
 
 var (
-	// parameters values
-	pfnOtel = os.Getenv("PARAMS_OTEL_FILE")
-	// templates
-	tfnOtel    = os.Getenv("OTEL_TMPL_FILE")
-	tfnOtelCfg = os.Getenv("OTELCOL_CFG_FILE")
-	// out files
-	ofnOtel = os.Getenv("OTELCOL_OUT_FILE")
-
 	cdkOut        = os.Getenv("CDK_OUTPUTS_FILE")
 	kubectlCfgCmd = os.Getenv("KUBECTL_CFG_CMD")
 	roleArn       = os.Getenv("AWS_SSO_ROLE")
@@ -35,8 +27,6 @@ func main() {
 	}
 	var err error
 	switch os.Args[1] {
-	case "otel":
-		err = parseOtel(tfnOtel, tfnOtelCfg, pfnOtel, ofnOtel)
 	case "kubecfg":
 		err = runKubectlCfg(cdkOut, kubectlCfgCmd)
 	case "ekscfg":

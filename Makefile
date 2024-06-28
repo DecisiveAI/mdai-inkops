@@ -8,12 +8,6 @@ include make/Makefile-local-recipes
 .EXPORT_ALL_VARIABLES:
 # parameters values
 PARAMS_AWS_FILE=values/aws.env
-PARAMS_OTEL_FILE=values/params-values-otel.yaml
-# templates
-OTEL_TMPL_FILE=templates/otel-tmpl.yaml
-OTELCOL_CFG_FILE=values/otelcol-config.yaml
-# out files
-OTELCOL_OUT_FILE= lib/otelcol.yaml
 # kubectl config
 CDK_OUTPUTS_FILE=cdk-output.json
 KUBECTL_CFG_CMD=kubectl-cfg-command
@@ -46,11 +40,6 @@ config-aws: dot-env
 		echo $${line} >> .env; \
 	done;
 
-.PHONY: config-otel
-.SILENT: config-otel
-config-otel: build
-	./mdai-install otel;
-
 .PHONY: config-mdai
 .SILENT: config-mdai
 config-mdai:
@@ -82,7 +71,7 @@ npm-build:
 
 .PHONY: config
 .SILENT: config
-config: go-mod config-aws config-otel
+config: go-mod config-aws config-mdai
 
 .PHONY: cdk
 .SILENT: cdk
@@ -145,8 +134,6 @@ cert-gen: config-aws
 	aws acm import-certificate --region ${AWS_REGION} --profile ${AWS_PROFILE} --certificate fileb:///tmp/certificate_mdai.crt --private-key fileb:///tmp/private_mdai.key --output text) ; \
 	grep -v "MDAI_UI_ACM_ARN" .env > .env.tmp && mv .env.tmp .env; \
 	echo "MDAI_UI_ACM_ARN=$${ACM_ARN}" >> .env; \
-	sed  -i .tmp -E "s|(service.beta.kubernetes.io\/aws-load-balancer-ssl-cert: )[^#]*( #.*){0,1}|\1$${ACM_ARN}\2|; s|(alb.ingress.kubernetes.io\/certificate-arn: )[^#]*( #.*){0,1}|\1$${ACM_ARN}\2|" ${PARAMS_OTEL_FILE} && \
-	rm ${PARAMS_OTEL_FILE}.tmp ; \
 	echo "If desired, copy your cert's ARN for your records: $${ACM_ARN}"; \
 	echo "You can view your cert here: https://${AWS_REGION}.console.aws.amazon.com/acm/home?region=${AWS_REGION}#/certificates/list" ; \
 	rm -f /tmp/certificate_mdai.crt /tmp/private_mdai.key ; \

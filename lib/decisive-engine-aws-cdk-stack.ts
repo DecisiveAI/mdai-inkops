@@ -237,7 +237,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     mdaiOperator.node.addDependency(otelOperator);
 
     const mdaiOperatorCrManifest = yaml.load(readFileSync(path.join(__dirname, 'mdai-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
-    cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifest).node.addDependency(otelOperator);
+    cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifest).node.addDependency(mdaiOperator);
 
     const prometheus = cluster.addHelmChart('prometheus', {
       chart: config.PROMETHEUS.CHART,
