@@ -23,7 +23,7 @@ var (
 
 func main() {
 	if len(os.Args) != 2 {
-		panic("single mandatory argument missing: [otel|kubecfg|ekscfg]")
+		panic("single mandatory argument missing: [kubecfg|ekscfg]")
 	}
 	var err error
 	switch os.Args[1] {
@@ -32,7 +32,7 @@ func main() {
 	case "ekscfg":
 		err = addRoleMapping(roleArn)
 	default:
-		err = errors.New("single mandatory argument missing: [otel|kubecfg|ekscfg]")
+		err = errors.New("single mandatory argument missing: [kubecfg|ekscfg]")
 	}
 
 	if err != nil {

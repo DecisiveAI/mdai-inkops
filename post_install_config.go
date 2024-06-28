@@ -52,7 +52,8 @@ func addRoleMapping(roleArn string) error {
 	found := false
 	for i, mapRole := range mapRoles {
 		if mapRole.Rolearn == roleArn {
-			mapRoles[i] = MapRole{Rolearn: roleArn,
+			mapRoles[i] = MapRole{
+				Rolearn:  roleArn,
 				Username: "cluster-admin",
 				Groups:   []string{"system:masters"},
 			}
@@ -61,7 +62,8 @@ func addRoleMapping(roleArn string) error {
 		}
 	}
 	if !found {
-		mapRoles = append(mapRoles, MapRole{Rolearn: roleArn,
+		mapRoles = append(mapRoles, MapRole{
+			Rolearn:  roleArn,
 			Username: "cluster-admin",
 			Groups:   []string{"system:masters"},
 		},
