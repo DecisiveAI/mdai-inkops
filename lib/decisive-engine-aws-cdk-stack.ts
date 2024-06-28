@@ -518,21 +518,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       // NB: might be better to do this outside of CDK and call aws cli commands from Makefile
       // because security groups tagging can not be done here anyways
 
-      const subnetsPub = cluster.vpc.selectSubnets(
-          {
-            subnetType: ec2.SubnetType.PUBLIC
-          },
-      ).subnets;
-
-      const subnetsPriv = cluster.vpc.selectSubnets(
-          {
-            subnetType: ec2.SubnetType.PRIVATE
-          },
-      ).subnets;
-      const subnets = subnetsPub.concat(subnetsPriv)
-
-      cdk.Tags.of(this).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
-        includeResources: subnets,
+      cdk.Tags.of(cluster).add('karpenter.sh\/discovery', `${config.CLUSTER.NAME}`, {
+        includeResourceTypes: ['AWS::EC2::Subnet'],
       });
     }
     const datalyzer = cluster.addHelmChart("datalyzer", {
