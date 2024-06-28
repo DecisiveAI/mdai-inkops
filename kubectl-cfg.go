@@ -30,7 +30,7 @@ func runKubectlCfg(cdkOutput, kubectlCfgCommand string) (err error) {
 
 	keysValues := make(map[string]any)
 	for k := range outs {
-		if strings.HasSuffix(k, "AwsCdkStack") {
+		if strings.Contains(k, "AwsCdkStack") {
 			var ok bool
 			if keysValues, ok = outs[k].(map[string]any); !ok {
 				return errors.New("type assertion failed")
