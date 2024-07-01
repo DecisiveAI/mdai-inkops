@@ -85,6 +85,13 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         VERSION: process.env.DATALYZER_VERSION || "0.0.1",
         CHART: "datalyzer",
         RELEASE: "datalyzer",
+      },
+      MDAI_OPERATOR: {
+        NAMESPACE: "mydecisive-engine-operator-system",
+        REPO: "https://decisiveai.github.io/mdai-helm-charts",
+        VERSION: process.env.MDAI_OPERATOR_VERSION || "0.0.1",
+        CHART: "mydecisive-engine-operator",
+        RELEASE: "mydecisive-engine-operator",
       }
     }
 
@@ -217,8 +224,20 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     otelOperator.node.addDependency(certManager);
 
-    const collectorCrManifest = yaml.load(readFileSync(path.join(__dirname, 'otelcol.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
-    cluster.addManifest('collectorCrManifest', collectorCrManifest).node.addDependency(otelOperator);
+    const mdaiOperator = cluster.addHelmChart('mdaiOperator', {
+      chart: config.MDAI_OPERATOR.CHART,
+      repository: config.MDAI_OPERATOR.REPO,
+      namespace: config.MDAI_OPERATOR.NAMESPACE,
+      createNamespace: true,
+      release: config.MDAI_OPERATOR.RELEASE,
+      version: config.MDAI_OPERATOR.VERSION,
+      wait: true,
+      values: {},
+    });
+    mdaiOperator.node.addDependency(otelOperator);
+
+    const mdaiOperatorCrManifest = yaml.load(readFileSync(path.join(__dirname, 'mdai-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
+    cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifest).node.addDependency(mdaiOperator);
 
     const prometheus = cluster.addHelmChart('prometheus', {
       chart: config.PROMETHEUS.CHART,

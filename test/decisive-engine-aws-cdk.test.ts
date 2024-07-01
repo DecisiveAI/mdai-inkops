@@ -117,15 +117,28 @@ describe('DecisiveEngine', () => {
                 })
             )
         })
+        it('should have an MDAI Operator Helm chart', () => {
+            template.hasResourceProperties('Custom::AWSCDK-EKS-HelmChart',
+                Match.objectLike({
+                    Repository: 'https://decisiveai.github.io/mdai-helm-charts',
+                    Namespace: 'mydecisive-engine-operator-system',
+                    CreateNamespace: true,
+                    Release: 'mydecisive-engine-operator',
+                    Version: '0.0.1',
+                    Wait: true,
+                })
+            )
+        })
     })
     describe('Kubernetes resources', () => {
         it('should have resources', () => {
             template.resourceCountIs('AWS::EKS::Nodegroup', 1)
             template.resourceCountIs('AWS::EC2::VPC', 1)
-            template.resourceCountIs('Custom::AWSCDK-EKS-HelmChart', 8)
+            template.resourceCountIs('Custom::AWSCDK-EKS-HelmChart', 9)
             template.resourceCountIs('AWS::EC2::Subnet', 4)
             template.resourceCountIs('AWS::EC2::NatGateway', 2)
             template.resourceCountIs('AWS::EC2::InternetGateway', 1)
+            template.resourceCountIs('Custom::AWSCDK-EKS-KubernetesResource', 5)
         })
     })
 })
