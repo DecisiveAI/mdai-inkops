@@ -36,7 +36,7 @@ mdai-install-helm-charts:
 	helm upgrade prometheus prometheus-community/prometheus --install -f ./templates/prometheus-values.yaml
 	helm upgrade mdai-api mydecisive/mdai-api --version 0.0.3 --install
 	helm upgrade mdai-console mydecisive/mdai-console --version 0.0.6 --install
-	helm upgrade datalyzer mydecisive/datalyzer --version 0.0.1 --install
+	helm upgrade datalyzer mydecisive/datalyzer --version 0.0.4 --install
 	@echo "✅ Complete mdai-install-helm-charts!"
 
 # ~~~~~~~~~~~~~~~~~ CREATE ACTION RULES ~~~~~~~~~~~~~~~~~
