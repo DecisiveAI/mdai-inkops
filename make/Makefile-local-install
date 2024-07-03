@@ -72,7 +72,7 @@ mdai-wait-for-pods:
 mdai-deploy-operator:
 	helm upgrade mydecisive-engine-operator mydecisive/mydecisive-engine-operator --namespace mydecisive-engine-operator-system --create-namespace --install --wait
 	kubectl wait --timeout=30s --for condition=established crd mydecisiveengines.mydecisive.ai
-	kubectl apply -f templates/mdai_operator.yaml
+	kubectl apply -f templates/mdai-operator.yaml
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~ LOCAL INSTALL RECIPE ~~~~~~~~~~~~~~~~~~~~
