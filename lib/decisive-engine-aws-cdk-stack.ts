@@ -82,14 +82,14 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       DATALYZER: {
         NAMESPACE: "default",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.DATALYZER_VERSION || "0.0.1",
+        VERSION: process.env.DATALYZER_VERSION || "0.0.4",
         CHART: "datalyzer",
         RELEASE: "datalyzer",
       },
       MDAI_OPERATOR: {
         NAMESPACE: "mydecisive-engine-operator-system",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_OPERATOR_VERSION || "0.0.1",
+        VERSION: process.env.MDAI_OPERATOR_VERSION || "0.0.3",
         CHART: "mydecisive-engine-operator",
         RELEASE: "mydecisive-engine-operator",
       }
