@@ -101,7 +101,7 @@ describe('DecisiveEngine', () => {
                     Namespace: 'default',
                     CreateNamespace: true,
                     Release: 'datalyzer',
-                    Version: '0.0.1',
+                    Version: '0.0.4',
                     Wait: true,
                 })
             )
@@ -124,7 +124,7 @@ describe('DecisiveEngine', () => {
                     Namespace: 'mydecisive-engine-operator-system',
                     CreateNamespace: true,
                     Release: 'mydecisive-engine-operator',
-                    Version: '0.0.1',
+                    Version: '0.0.3',
                     Wait: true,
                 })
             )
