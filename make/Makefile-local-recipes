@@ -7,12 +7,26 @@ create-mdai:
 	@time $(MAKE) -f ./make/Makefile-local-install install-all
 	@echo "🐙 Create MDAI Engine completed successfully!"
 
+.SILENT: install-mdai
+.PHONY: install-mdai
+install-mdai:
+	@echo "🏁 Installing MDAI Engine started..."
+	@time $(MAKE) -f ./make/Makefile-local-install install-mdai
+	@echo "🐙 Installing MDAI Engine completed successfully!"
+
 .SILENT: delete-mdai
 .PHONY: delete-mdai
 delete-mdai:
 	@echo "🐙 Destroy MDAI Engine started..."
 	@$(MAKE) -f ./make/Makefile-local-uninstall uninstall-all
 	@echo "🪦 Destroy MDAI Engine completed successfully!"
+
+.SILENT: uninstall-mdai
+.PHONY: uninstall-mdai
+uninstall-mdai:
+	@echo "🐙 Uninstalling MDAI Engine started..."
+	@$(MAKE) -f ./make/Makefile-local-uninstall uninstall-mdai
+	@echo "🪦 Uninstalling MDAI Engine completed successfully!"
 
 .SILENT: create-mdai-semi-auto
 .PHONY: create-mdai-semi-auto

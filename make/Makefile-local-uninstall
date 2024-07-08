@@ -44,10 +44,9 @@ delete-config: delete-mdai-config
 .PHONY: uninstall-helm-repos
 uninstall-helm-repos: uninstall-helm-artifacts
 
-
-.SILENT: uninstall-all
-.PHONY: uninstall-all
-uninstall-all: uninstall-helm-releases | delete-mdai-cluster
+.SILENT: uninstall-mdai
+.PHONY: uninstall-mdai
+uninstall-mdai: uninstall-helm-releases
 
 .SILENT: uninstall-all-artifacts
 .PHONY: uninstall-all-artifacts

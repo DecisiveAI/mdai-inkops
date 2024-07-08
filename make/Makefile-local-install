@@ -82,6 +82,10 @@ mdai-deploy-operator:
 .PHONY: install-all
 install-all: create-mdai-cluster mdai-install-cluster-dependencies mdai-wait-for-pods mdai-deploy-operator
 
+.SILENT: install-mdai
+.PHONY: install-mdai
+install-mdai: mdai-install-cluster-dependencies mdai-wait-for-pods mdai-deploy-operator
+
 SILENT: install-all-semi-auto
 .PHONY: install-all-semi-auto
 install-all-semi-auto: create-mdai-cluster mdai-add-helm-charts mdai-install-helm-charts mdai-wait-for-pods mdai-deploy-operator
