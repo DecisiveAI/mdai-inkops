@@ -241,7 +241,11 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     mdaiOperatorCrManifest.node.addDependency(mdaiOperator);
 
     const otelOperatorCrManifestYaml = yaml.load(readFileSync(path.join(__dirname, 'otel-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
-    cluster.addManifest('otelOperatorCrManifest', otelOperatorCrManifestYaml).node.addDependency(mdaiOperatorCrManifest);
+    new eks.KubernetesManifest(this, 'otelOperatorCrManifest', {
+      cluster,
+      manifest: [otelOperatorCrManifestYaml],
+      overwrite: true,
+    }).node.addDependency(mdaiOperatorCrManifest);
 
     const prometheus = cluster.addHelmChart('prometheus', {
       chart: config.PROMETHEUS.CHART,
