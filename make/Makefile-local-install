@@ -45,8 +45,10 @@ mdai-install-helm-charts:
 .SILENT: create-mdai-cluster
 .PHONY: create-mdai-cluster
 create-mdai-cluster:
-	@kind get clusters | grep -q mdai-local || kind create cluster --name mdai-local
+	@echo "🟢 create-mdai-cluster..."
+	kind get clusters | grep -q mdai-local || kind create cluster --name mdai-local
 	kubectl cluster-info --context kind-mdai-local
+	@echo "✅ Complete create-mdai-cluster!"
 
 # Creates a cluster for an MDAI engine to be created
 .SILENT: mdai-install-cluster-dependencies
