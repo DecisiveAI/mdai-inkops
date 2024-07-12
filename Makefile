@@ -131,7 +131,7 @@ endif
 .SILENT: cert-gen
 cert-gen: config-aws
 	export $(shell sed '/^\#/d' .env) && \
-	openssl req -new -x509 -sha256 -nodes -newkey rsa:2048 -keyout /tmp/private_mdai.key -out /tmp/certificate_mdai.crt -subj /CN=$${MDAI_UI_HOSTNAME} && \
+	openssl req -new -x509 -sha256 -days 365 -nodes -newkey rsa:2048 -keyout /tmp/private_mdai.key -out /tmp/certificate_mdai.crt -subj /CN=$${MDAI_UI_HOSTNAME} && \
 	ACM_ARN=`aws acm import-certificate --region $${AWS_REGION} --profile $${AWS_PROFILE} --certificate fileb:///tmp/certificate_mdai.crt --private-key fileb:///tmp/private_mdai.key --output text` && \
 	grep -v "MDAI_UI_ACM_ARN" .env > .env.tmp && mv .env.tmp .env && \
 	echo "MDAI_UI_ACM_ARN=$${ACM_ARN}" >> .env && \
