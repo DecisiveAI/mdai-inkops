@@ -1,0 +1,26 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: test-collector
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-name: mdai-non-grpc-endpoint
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+spec:
+  ingress:
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: mdai-grpc-endpoint
+      alb.ingress.kubernetes.io/backend-protocol-version: GRPC
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/certificate-arn: $MDAI_UI_ACM_ARN
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    collectorEndpoints:
+      otlp: otlp.grpc.endpoint.collector.your-domain.io
+      jaeger: jaeger.grpc.endpoint.collector.your-domain.io
+    ingressClassName: alb
+    ruleType: path
+    type: aws
+  mode: deployment
