@@ -8,16 +8,6 @@ metadata:
     app.kubernetes.io/part-of: mydecisive-engine-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: mydecisive-engine-operator
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-name: mdai-non-grpc-endpoint
-    service.beta.kubernetes.io/aws-load-balancer-type: external
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: $MDAI_UI_ACM_ARN
-    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-    service.beta.kubernetes.io/aws-load-balancer-ssl-negotiation-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
-    service.beta.kubernetes.io/aws-load-balancer-target-node-labels: app.kubernetes.io/component=opentelemetry-collector
   name: mydecisiveengine-sample-1
 spec:
   telemetryModule:
@@ -26,6 +16,12 @@ spec:
       version: "0.0.1"
     collectors:
       - name: "test-collector"
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-name: mdai-non-grpc-endpoint
+          service.beta.kubernetes.io/aws-load-balancer-type: external
+          service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-ssl-cert: $MDAI_UI_ACM_ARN
         enabled: true
         measureVolumes: true
         spec:
@@ -85,7 +81,7 @@ spec:
                   from_attribute: k8s.pod.uid
                   action: insert
             exporters:
-              debug: 
+              debug:
                 verbosity: detailed
                 sampling_initial: 2
                 sampling_thereafter: 100
