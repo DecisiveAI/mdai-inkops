@@ -35,7 +35,7 @@ mdai-install-helm-charts:
 	helm upgrade opentelemetry-operator mydecisive/opentelemetry-operator --namespace opentelemetry-operator-system --create-namespace --install --set manager.image.repository=public.ecr.aws/p3k6k6h3/opentelemetry-operator --set manager.image.tag=latest --set leaderElection.enabled=false --version 0.43.1 --wait
 	helm upgrade prometheus prometheus-community/prometheus --install -f ./templates/prometheus-values.yaml
 	helm upgrade mdai-api mydecisive/mdai-api --version 0.0.3 --install
-	helm upgrade mdai-console mydecisive/mdai-console --version 0.0.6 --install
+	helm upgrade mdai-console mydecisive/mdai-console --version 0.2.0 --install
 	helm upgrade datalyzer mydecisive/datalyzer --version 0.0.4 --install
 	@echo "✅ Complete mdai-install-helm-charts!"
 
