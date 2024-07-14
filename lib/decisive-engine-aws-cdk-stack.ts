@@ -65,7 +65,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       MDAI_CONSOLE: {
         NAMESPACE: "default",
         REPO: "https://decisiveai.github.io/mdai-helm-charts",
-        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.2.0",
+        VERSION: process.env.MDAI_CONSOLE_VERSION || "0.2.1",
         CHART: "mdai-console",
         RELEASE: "mdai-console",
         ACM_ARN: process.env.MDAI_UI_ACM_ARN,
