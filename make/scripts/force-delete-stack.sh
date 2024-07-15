@@ -5,6 +5,7 @@ export $(grep -v '^#' .env | xargs)
 
 # OVERRIDES
 
+PREFERRED_REGION=
 PREFERRED_PROFILE=
 
 # Set environment variables
@@ -27,5 +28,9 @@ else
     # DELETE STACK
     echo "Deleting stack $STACK_NAME."
 
-    aws cloudformation delete-stack --stack-name $STACK_NAME --profile $PROFILE --region $REGION
+    aws cloudformation delete-stack \
+      --stack-name $STACK_NAME \ 
+      --deletion-mode "FORCE_DELETE_STACK" \
+      --profile $PROFILE \ 
+      --region $REGION
 fi

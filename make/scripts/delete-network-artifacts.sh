@@ -4,8 +4,8 @@ export $(grep -v '^#' .env | xargs)
 
 
 # OVERRIDES
-CLUSTER_NAME="test-july-11"
-PREFERRED_REGION="us-east-1"
+CLUSTER_NAME=test-july-12
+PREFERRED_REGION=us-east-2
 PREFERRED_PROFILE=
 
 # Set environment variables
