@@ -89,7 +89,7 @@ describe('DecisiveEngine', () => {
                     Namespace: 'default',
                     CreateNamespace: true,
                     Release: 'mdai-console',
-                    Version: '0.2.1',
+                    Version: '0.2.2',
                     Wait: true,
                 })
             )
