@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { DecisiveEngineAwsCdkStack } from '../lib/decisive-engine-aws-cdk-stack';
 import {Tags} from "aws-cdk-lib";
 
+// TODO: IF YOU CHANGE THIS NAME BAD THINGS WILL HAPPEN
 const stackId = 'DecisiveEngineAwsCdkStack';
 const app = new cdk.App();
 
