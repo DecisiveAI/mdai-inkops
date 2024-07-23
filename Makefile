@@ -45,11 +45,6 @@ config-aws: dot-env
 config-mdai:
 	envsubst < templates/mdai-operator.yaml > lib/mdai-operator.yaml
 
-.PHONY: config-otel
-.SILENT: config-otel
-config-otel:
-	envsubst < templates/otel-tmpl.yaml > lib/otel-operator.yaml
-
 .PHONY: go-mod
 .SILENT: go-mod
 go-mod:
