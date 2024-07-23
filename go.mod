@@ -3,9 +3,9 @@ module textTemplate
 go 1.22
 
 require (
-	github.com/aws/aws-cdk-go/awscdk/v2 v2.144.0
+	github.com/aws/aws-cdk-go/awscdk/v2 v2.150.0
 	github.com/aws/constructs-go/constructs/v10 v10.3.0
-	github.com/aws/jsii-runtime-go v1.99.0
+	github.com/aws/jsii-runtime-go v1.101.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.1
 	k8s.io/client-go v0.29.1
@@ -40,14 +40,14 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

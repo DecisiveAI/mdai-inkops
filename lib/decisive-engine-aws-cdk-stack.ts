@@ -236,16 +236,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     mdaiOperator.node.addDependency(otelOperator);
 
-    const mdaiOperatorCrManifestYaml = yaml.load(readFileSync(path.join(__dirname, 'mdai-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
-    const mdaiOperatorCrManifest = cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifestYaml);
-    mdaiOperatorCrManifest.node.addDependency(mdaiOperator);
-
-    const otelOperatorCrManifestYaml = yaml.load(readFileSync(path.join(__dirname, 'otel-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
-    new eks.KubernetesManifest(this, 'otelOperatorCrManifest', {
-      cluster,
-      manifest: [otelOperatorCrManifestYaml],
-      overwrite: true,
-    }).node.addDependency(mdaiOperatorCrManifest);
+    const mdaiOperatorCrManifest = yaml.load(readFileSync(path.join(__dirname, 'mdai-operator.yaml'), { encoding: 'utf-8' })) as Record<string, any>;
+    cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifest).node.addDependency(mdaiOperator);
 
     const prometheus = cluster.addHelmChart('prometheus', {
       chart: config.PROMETHEUS.CHART,
