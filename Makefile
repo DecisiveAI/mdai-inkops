@@ -76,7 +76,7 @@ init: go-mod config-aws config-mdai config-otel
 
 .PHONY: config
 .SILENT: config
-config: go-mod config-aws config-mdai config-otel
+config: go-mod config-aws config-mdai
 
 .PHONY: cdk
 .SILENT: cdk
