@@ -69,11 +69,6 @@ npm-init:
 npm-build:
 	npm run build;
 
-# FAKING THIS SO IT DOESN"T FEEL LIKE MULTIPLE RUNS OF THE SAME COMMAND
-.PHONY: init
-.SILENT: init
-init: go-mod config-aws config-mdai config-otel
-
 .PHONY: config
 .SILENT: config
 config: go-mod config-aws config-mdai
