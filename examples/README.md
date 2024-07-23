@@ -5,38 +5,20 @@
 This folder contains a collection of example OTLP JSON files for all signals
 that can be used as request payloads.
 
-- Trace [trace.json](trace.json)
-- Metrics [metrics.json](metrics.json)
-- Logs [logs.json](logs.json)
+HTTP
+- Trace [trace.json](http_service/trace.json)
+- Metrics [metrics.json](http_service/metrics.json)
+- Logs [logs.json](http_service/logs.json)
+ 
+gRPC
+- Trace [trace.json](grpc_service/trace.json)
+- Metrics [metrics.json](grpc_service/metrics.json)
+- Logs [logs.json](grpc_service/logs.json)
 
-## Trying it out
 
-First run a OpenTelemetry collector with the following configuration:
+# Sending a curl
 
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http:
-
-exporters:
-  logging:
-    verbosity: detailed
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [logging]
-    metrics:
-      receivers: [otlp]
-      exporters: [logging]
-    logs:
-      receivers: [otlp]
-      exporters: [logging]
-```
-
-Then send a curl request to the collector (e.g. for Logs):
+Send a `curl` request to the collector (e.g. for Logs):
 
 ```shell
 # Set OTLP endpoint
@@ -65,14 +47,22 @@ export OTLP_ENDPOINT=HOST:PORT
 
 # use data from ./examples/grpc_service/logs.json AND
 # run the request using the data (as stdin) copied from above
-cat ./examples/grpc_service/metrics.json |
-grpcurl \
-  -d @ \
-  -proto examples/protos/opentelemetry/proto/collector/metrics/v1/metrics_service.proto \
-  -import-path examples/protos \
-  -plaintext \
-  ${OTLP_ENDPOINT} \
-  opentelemetry.proto.collector.metrics.v1.MetricsService/Export
+cat ./examples/grpc_service/logs.json |
+grpcurl -vv \
+    -d @ \
+    -proto examples/protos/opentelemetry/proto/collector/logs/v1/logs_service.proto \
+    -import-path examples/protos \
+    otlp.grpc.endpoint.collector.your-domain.io \
+    opentelemetry.proto.collector.logs.v1.LogsService/Export
+
+
+cat ./examples/grpc_service/logs.json |
+grpcurl -vv -insecure \
+    -d @ \
+    -proto examples/protos/opentelemetry/proto/collector/logs/v1/logs_service.proto \
+    -import-path examples/protos \
+    otlp.grpc.endpoint.collector.us-east-1.mydecisive.ai:443 \
+    opentelemetry.proto.collector.logs.v1.LogsService/Export
 ```
 
 > Remember to change the URL path when sending other signals (traces/metrics).
