@@ -1,0 +1,99 @@
+{
+  "resource_logs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "string_value": "grpc2.service"
+            }
+          }
+        ]
+      },
+      "scope_logs": [
+        {
+          "scope": {
+            "name": "my.library",
+            "version": "1.0.0",
+            "attributes": [
+              {
+                "key": "my.scope.attribute",
+                "value": {
+                  "string_value": "some scope attribute"
+                }
+              }
+            ]
+          },
+          "log_records": [
+            {
+              "time_unix_nano": "1544712660300000000",
+              "observed_time_unix_nano": "1544712660300000000",
+              "severity_number": 10,
+              "severity_text": "Information",
+              "body": {
+                "string_value": "Example log record"
+              },
+              "attributes": [
+                {
+                  "key": "string.attribute",
+                  "value": {
+                    "string_value": "some string"
+                  }
+                },
+                {
+                  "key": "boolean.attribute",
+                  "value": {
+                    "bool_value": true
+                  }
+                },
+                {
+                  "key": "int.attribute",
+                  "value": {
+                    "int_value": "10"
+                  }
+                },
+                {
+                  "key": "double.attribute",
+                  "value": {
+                    "double_value": 637.704
+                  }
+                },
+                {
+                  "key": "array.attribute",
+                  "value": {
+                    "array_value": {
+                      "values": [
+                        {
+                          "string_value": "many"
+                        },
+                        {
+                          "string_value": "values"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "map.attribute",
+                  "value": {
+                    "kvlist_value": {
+                      "values": [
+                        {
+                          "key": "some.map.key",
+                          "value": {
+                            "string_value": "some value"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

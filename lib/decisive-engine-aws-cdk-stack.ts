@@ -541,7 +541,10 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         includeResourceTypes: ['AWS::EC2::Subnet'],
       });
     }
-    const datalyzer = cluster.addHelmChart("datalyzer", {
+    
+    // Add Datalyzer service to helm chart for installation
+    
+    cluster.addHelmChart("datalyzer", {
       chart: config.DATALYZER.CHART,
       repository: config.DATALYZER.REPO,
       namespace: config.DATALYZER.NAMESPACE,
