@@ -130,6 +130,18 @@ endif
 .PHONY: cert-gen
 .SILENT: cert-gen
 cert-gen: config-aws
+	@if [ -z "$${MDAI_UI_HOSTNAME}" ]; then \
+		echo "Error: MDAI_UI_HOSTNAME is not set or is empty."; \
+		exit 1; \
+	fi
+	@if [ -z "$${AWS_REGION}" ]; then \
+		echo "Error: AWS_REGION is not set or is empty."; \
+		exit 1; \
+	fi
+	@if [ -z "$${AWS_PROFILE}" ]; then \
+		echo "Error: AWS_PROFILE is not set or is empty."; \
+		exit 1; \
+	fi
 	export $(shell sed '/^\#/d' .env) && \
 	openssl req -new -x509 -sha256 -days 365 -nodes -newkey rsa:2048 -keyout /tmp/private_mdai.key -out /tmp/certificate_mdai.crt -subj /CN=$${MDAI_UI_HOSTNAME} && \
 	ACM_ARN=`aws acm import-certificate --region $${AWS_REGION} --profile $${AWS_PROFILE} --certificate fileb:///tmp/certificate_mdai.crt --private-key fileb:///tmp/private_mdai.key --output text` && \
