@@ -135,11 +135,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
     metricsServer.node.addDependency(prometheus);
 
-    const mdaiApi = cluster.addHelmChart('mdai-api', {
-      ...config.util.toObject(config.get('mdai-api')),
-    });
-    mdaiApi.node.addDependency(prometheus);
-
     let mdaiAppClient = {} as cdk.aws_cognito.UserPoolClient,
       consoleIngress = {
         'enabled': true,
@@ -177,7 +172,6 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       });
-      mdaiUserPool.node.addDependency(mdaiApi);
 
       const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
         cognitoDomain: {
@@ -218,7 +212,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     const mdaiConsole = cluster.addHelmChart("mdai-console", consoleConfig);
     if (config.get('mdai-cognito.enable') && mdaiAppClient) {
       mdaiConsole.node.addDependency(mdaiAppClient);
-    } 
+    }
 
     //
     //    Karpenter
@@ -241,14 +235,12 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           }
       );
 
-
       new iam.InstanceProfile(
           this,
           `KarpenterNodeInstanceProfile-${config.get('cluster.name')}-${process.env.AWS_REGION}`, {
             instanceProfileName: `KarpenterNodeInstanceProfile-${config.get('cluster.name')}-${process.env.AWS_REGION}`,
             role: karpenterNodeRole,
           });
-
 
       const conditions = new cdk.CfnJson(this, 'ConditionAudienceServiceAccount', {
         value: {
@@ -404,9 +396,9 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         includeResourceTypes: ['AWS::EC2::Subnet'],
       });
     }
-    
+
     // Add Datalyzer service to helm chart for installation
-    
+
     cluster.addHelmChart("datalyzer", {
       ...config.util.toObject(config.get('datalyzer'))
     });
