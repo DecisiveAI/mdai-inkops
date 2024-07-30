@@ -9,6 +9,7 @@ import { Construct } from 'constructs';
 import { KubectlV30Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v30';
 import * as path from 'path';
 import 'dotenv/config'
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 export class DecisiveEngineAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -128,45 +129,37 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     const clusterName = cluster.clusterName;
     const clusterEndpoint = cluster.clusterEndpoint;
     const clusterCertificateAuthorityData = cluster.clusterCertificateAuthorityData;
-    // The userDataScript below is not tested, more details https://trying2adult.com/what-is-xdp-and-how-do-you-use-it-in-linux-amazon-ec2-example/
-    // mtu 3818 is not correct, should be 3498
-    // ens5 is default network interface
-    const userDataScript = `
-Content-Type: multipart/mixed; boundary="//"
-MIME-Version: 1.0
-
---//
-Content-Type: text/cloud-config; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="cloud-config.txt"
-
-#cloud-config
-cloud_final_modules:
-- [scripts-user, always]
-
---//
-Content-Type: text/x-shellscript; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="userdata.txt"
-
-#!/bin/bash
-
+    // More details https://trying2adult.com/what-is-xdp-and-how-do-you-use-it-in-linux-amazon-ec2-example/
+    // FIXME setting bellow applied only to ens5 and not ens6, check why
+    // test with 'ethtool -l eth0'
+    const userDataScript = `#!/bin/bash
+sudo /etc/eks/bootstrap.sh --apiserver-endpoint '${clusterEndpoint}' --b64-cluster-ca '${clusterCertificateAuthorityData}' '${clusterName}'
+sleep 120  # Add a sleep to wait for all interfaces to be ready
+echo "Available network interfaces:"
+ip -o link show
 for i in $(ip -o link show | awk -F': ' '{print $2}' | grep -Ev '(^lo|^eni)')
 do 
-        echo -ne "$i\n"
-        ip link set dev $i mtu 3498
-        ethtool -L $i combined 1
+        echo -ne "Setting combined settings for $i\n"
+        sudo ethtool -L $i combined 1
+        if [ $? -eq 0 ]; then
+          echo "Configured $i successfully"
+        else
+          echo "Failed to configure $i" >&2
+  fi
 done
---//--
-    `;
+echo "User data script completed"
+`;
 
+    // retrieve the latest Ubuntu EKS AMI ID from SSM Parameter Store, ubuntu https://cloud-images.ubuntu.com/docs/aws/eks/
+    const amiId = ssm.StringParameter.valueForStringParameter(
+        this,
+        '/aws/service/canonical/ubuntu/eks/22.04/1.29/stable/current/amd64/hvm/ebs-gp2/ami-id'
+    );
 
     const launchTemplate = new ec2.CfnLaunchTemplate(this, 'LaunchTemplate', {
       launchTemplateName: 'UbuntuLaunchTemplate',
       launchTemplateData: {
-        imageId: 'ami-070190584709ec64f', //ubuntu https://cloud-images.ubuntu.com/docs/aws/eks/
+        imageId: amiId,
         // keyName: 'node', // uncomment for debug purpose via ssh
         userData: cdk.Fn.base64(userDataScript),
         securityGroupIds: [cluster.clusterSecurityGroup.securityGroupId],
@@ -185,6 +178,52 @@ done
           }
         ],
       },
+    });
+
+    // Patch the aws-node DaemonSet to set AWS_VPC_ENI_MTU
+    // test with 'ip link' to check if mtu is set correctly
+    new eks.KubernetesPatch(this, 'AwsNodePatch', {
+      cluster,
+      resourceName: 'daemonset/aws-node',
+      applyPatch: {
+        spec: {
+          template: {
+            spec: {
+              containers: [
+                {
+                  name: 'aws-node',
+                  env: [
+                    {
+                      name: 'AWS_VPC_ENI_MTU',
+                      value: '3498',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+      restorePatch: {
+        spec: {
+          template: {
+            spec: {
+              containers: [
+                {
+                  name: 'aws-node',
+                  env: [
+                    {
+                      name: 'AWS_VPC_ENI_MTU',
+                      value: '9001',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+      resourceNamespace: 'kube-system',
     });
 
     const vpc = cluster.vpc;
