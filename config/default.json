@@ -1,0 +1,80 @@
+{
+    "CLUSTER": {
+        "NAME": "DecisiveEngineCluster",
+        "CAPACITY": 10,
+        "INSTANCE": {
+            "CLASS": "t2",
+            "SIZE": "micro"
+        }
+    },
+    "CERT_MANAGER": {
+        "NAMESPACE": "cert-manager",
+        "REPO": "https://charts.jetstack.io",
+        "VERSION": "1.13.1",
+        "CHART": "cert-manager",
+        "RELEASE": "cert-manager"
+    },
+    "OTEL_OPERATOR": {
+        "NAMESPACE": "opentelemetry-operator-system",
+        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
+        "VERSION": "0.43.1",
+        "CHART": "opentelemetry-operator",
+        "RELEASE": "opentelemetry-operator",
+        "MANAGER": {
+            "REPO": "public.ecr.aws/p3k6k6h3/opentelemetry-operator",
+            "VERSION": "latest"
+        }
+    },
+    "PROMETHEUS": {
+        "NAMESPACE": "default",
+        "REPO": "https://prometheus-community.github.io/helm-charts",
+        "VERSION": "25.21.0",
+        "CHART": "prometheus",
+        "RELEASE": "prometheus"
+    },
+    "METRICS_SERVER": {
+        "NAMESPACE": "kube-system",
+        "REPO": "https://kubernetes-sigs.github.io/metrics-server/",
+        "VERSION": "3.12.1",
+        "CHART": "metrics-server",
+        "RELEASE": "metrics-server"
+    },
+    "MDAI_API": {
+        "NAMESPACE": "default",
+        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
+        "VERSION": "0.0.3",
+        "CHART": "mdai-api",
+        "RELEASE": "mdai-api"
+    },
+    "MDAI_CONSOLE": {
+        "NAMESPACE": "default",
+        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
+        "VERSION": "0.2.4",
+        "CHART": "mdai-console",
+        "RELEASE": "mdai-console",
+        "ACM_ARN": ""
+    },
+    "MDAI_COGNITO": {
+        "ENABLE": false,
+        "UI_HOSTNAME": "console.mydecisive.ai",
+        "USER_POOL_DOMAIN": "mydecisive"
+    },
+    "KARPENTER": {
+        "ENABLE": true,
+        "NAMESPACE": "kube-system"
+    },
+    "DATALYZER": {
+        "NAMESPACE": "default",
+        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
+        "VERSION": "0.0.4",
+        "CHART": "datalyzer",
+        "RELEASE": "datalyzer"
+    },
+    "MDAI_OPERATOR": {
+        "NAMESPACE": "mydecisive-engine-operator-system",
+        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
+        "VERSION": "0.0.7",
+        "CHART": "mydecisive-engine-operator",
+        "RELEASE": "mydecisive-engine-operator"
+    }
+}

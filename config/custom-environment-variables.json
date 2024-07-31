@@ -1,0 +1,50 @@
+{
+  "CLUSTER": {
+    "NAME": "MDAI_CLUSTER_NAME",
+    "CAPACITY": "MDAI_CLUSTER_CAPACITY",
+    "INSTANCE": {
+      "CLASS": "MDAI_EC2_INSTANCE_CLASS",
+      "SIZE": "MDAI_EC2_INSTANCE_SIZE"
+    }
+  },
+  "CERT_MANAGER": {
+    "VERSION": "MDAI_CERT_MANAGER_VERSION"
+  },
+  "OTEL_OPERATOR": {
+    "VERSION": "MDAI_OTEL_OPERATOR_VERSION",
+    "MANAGER": {
+      "REPO": "MDAI_OTEL_OPERATOR_MANAGER_REPO",
+      "VERSION": "MDAI_OTEL_OPERATOR_MANAGER_VERSION"
+    }
+  },
+  "PROMETHEUS": {
+    "VERSION": "MDAI_PROMETHEUS_VERSION"
+  },
+  "MDAI_API": {
+    "VERSION": "MDAI_API_VERSION"
+  },
+  "MDAI_CONSOLE": {
+    "VERSION": "MDAI_CONSOLE_VERSION",
+    "ACM_ARN": "MDAI_UI_ACM_ARN"
+  },
+  "MDAI_COGNITO": {
+    "ENABLE": {
+      "__name": "COGNITO",
+      "__format": "json"
+    },
+    "UI_HOSTNAME": "MDAI_UI_HOSTNAME",
+    "USER_POOL_DOMAIN": "MDAI_UI_USER_POOL_DOMAIN"
+  },
+  "KARPENTER": {
+    "ENABLE": {
+      "__name": "KARPENTER",
+      "__format": "json"
+    }
+  },
+  "DATALYZER": {
+    "VERSION": "DATALYZER_VERSION"
+  },
+  "MDAI_OPERATOR": {
+    "VERSION": "MDAI_OPERATOR_VERSION"
+  }
+}
