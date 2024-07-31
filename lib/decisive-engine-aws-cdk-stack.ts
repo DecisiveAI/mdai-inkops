@@ -15,7 +15,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    if (config.get('MDAI_CONSOLE.ACM_ARN') === "") {
+    if (config.get('mdai-console.acm-arn') === "") {
       throw new Error("MDAI_UI_ACM_ARN was not specified")
     }
 
@@ -23,12 +23,12 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       assumedBy: new iam.AccountRootPrincipal(),
     });
 
-    const cluster = new eks.Cluster(this, config.get('CLUSTER.NAME'), {
-      clusterName: config.get('CLUSTER.NAME'),
+    const cluster = new eks.Cluster(this, config.get('cluster.name'), {
+      clusterName: config.get('cluster.name'),
       version: eks.KubernetesVersion.V1_30,
       kubectlLayer: new KubectlLayer(this, 'kubectl'),
       mastersRole: engineMasterRole,
-      defaultCapacity: Number(config.get('CLUSTER.CAPACITY')),
+      defaultCapacity: Number(config.get('cluster.capacity')),
       defaultCapacityInstance: ec2.InstanceType.of(
         Object.values(ec2.InstanceClass).find(instanceClass => instanceClass === process.env.MDAI_EC2_INSTANCE_CLASS) || ec2.InstanceClass.T2 as ec2.InstanceClass,
         Object.values(ec2.InstanceSize).find(instanceSize => instanceSize === process.env.MDAI_EC2_INSTANCE_SIZE) || ec2.InstanceSize.MICRO as ec2.InstanceSize,
@@ -108,51 +108,16 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     });
 
     const certManager = cluster.addHelmChart('certManager', {
-      chart: config.get('CERT_MANAGER.CHART'),
-      repository: config.get('CERT_MANAGER.REPO'),
-      namespace: config.get('CERT_MANAGER.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('CERT_MANAGER.RELEASE'),
-      version: config.get('CERT_MANAGER.VERSION'),
-      wait: true,
-      values: {
-        installCRDs: true
-      },
+      ...config.util.toObject(config.get('cert-manager'))
     });
 
     const otelOperator = cluster.addHelmChart('otelOperator', {
-      chart: config.get('OTEL_OPERATOR.CHART'),
-      repository: config.get('OTEL_OPERATOR.REPO'),
-      namespace: config.get('OTEL_OPERATOR.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('OTEL_OPERATOR.RELEASE'),
-      version: config.get('OTEL_OPERATOR.VERSION'),
-      wait: true,
-      values: {
-        admissionWebhooks: {
-          certManager: {
-            enabled: true,
-          },
-        },
-        manager: {
-          image: {
-            repository: config.get('OTEL_OPERATOR.MANAGER.REPO'),
-            tag: config.get('OTEL_OPERATOR.MANAGER.VERSION'),
-          },
-        },
-      },
+      ...config.util.toObject(config.get('otel-operator'))
     });
     otelOperator.node.addDependency(certManager);
 
     const mdaiOperator = cluster.addHelmChart('mdaiOperator', {
-      chart: config.get('MDAI_OPERATOR.CHART'),
-      repository: config.get('MDAI_OPERATOR.REPO'),
-      namespace: config.get('MDAI_OPERATOR.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('MDAI_OPERATOR.RELEASE'),
-      version: config.get('MDAI_OPERATOR.VERSION'),
-      wait: true,
-      values: {},
+      ...config.util.toObject(config.get('mdai-operator'))
     });
     mdaiOperator.node.addDependency(otelOperator);
 
@@ -160,36 +125,18 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     cluster.addManifest('mdaiOperatorCrManifest', mdaiOperatorCrManifest).node.addDependency(mdaiOperator);
 
     const prometheus = cluster.addHelmChart('prometheus', {
-      chart: config.get('PROMETHEUS.CHART'),
-      repository: config.get('PROMETHEUS.REPO'),
-      namespace: config.get('PROMETHEUS.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('PROMETHEUS.RELEASE'),
-      version: config.get('PROMETHEUS.VERSION'),
-      wait: true,
+      ...config.util.toObject(config.get('prometheus')),
       values: yaml.load(readFileSync(path.join(__dirname, '../templates/prometheus-values.yaml'), 'utf8')) as Record<string, any>,
     });
     prometheus.node.addDependency(otelOperator);
 
     const metricsServer = cluster.addHelmChart('metrics-server', {
-      chart: config.get('METRICS_SERVER.CHART'),
-      repository: config.get('METRICS_SERVER.REPO'),
-      namespace: config.get('METRICS_SERVER.NAMESPACE'),
-      createNamespace: false,
-      release: config.get('METRICS_SERVER.RELEASE'),
-      version: config.get('METRICS_SERVER.VERSION'),
-      wait: true,
+      ...config.util.toObject(config.get('metrics-server')),
     });
     metricsServer.node.addDependency(prometheus);
 
     const mdaiApi = cluster.addHelmChart('mdai-api', {
-      chart: config.get('MDAI_API.CHART'),
-      repository: config.get('MDAI_API.REPO'),
-      namespace: config.get('MDAI_API.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('MDAI_API.RELEASE'),
-      version: config.get('MDAI_API.VERSION'),
-      wait: true,
+      ...config.util.toObject(config.get('mdai-api')),
     });
     mdaiApi.node.addDependency(prometheus);
 
@@ -197,15 +144,15 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       consoleIngress = {
         'enabled': true,
         'cognito': {
-          'enabled': Boolean(config.get('MDAI_COGNITO.ENABLE')),
+          'enabled': Boolean(config.get('mdai-cognito.enable')),
         },
-        'acmArn': config.get('MDAI_CONSOLE.ACM_ARN'),
+        'acmArn': config.get('mdai-console.acm-arn'),
         'userPoolArn': '',
         'userPoolClientId': '',
         'userPoolDomain': '',
       }
 
-    if (config.get('MDAI_COGNITO.ENABLE')) {
+    if (config.get('mdai-cognito.enable')) {
       const mdaiUserPool = new cognito.UserPool(this, 'mdai-user-pool', {
         userPoolName: 'mdai-user-pool',
         signInAliases: {
@@ -234,7 +181,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
       const mdaiUserPoolDomain = mdaiUserPool.addDomain('CognitoDomain', {
         cognitoDomain: {
-          domainPrefix: config.get('MDAI_COGNITO.USER_POOL_DOMAIN'),
+          domainPrefix: config.get('mdai-cognito.user-pool-domain'),
         },
       });
 
@@ -250,7 +197,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
           },
           scopes: [cognito.OAuthScope.EMAIL],
           callbackUrls: [
-            `https://${config.get('MDAI_COGNITO.UI_HOSTNAME')}/oauth2/idpresponse`,
+            `https://${config.get('mdai-cognito.ui-hostname')}/oauth2/idpresponse`,
           ],
         },
       });
@@ -258,24 +205,18 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
       consoleIngress.userPoolArn = mdaiUserPool.userPoolArn
       consoleIngress.userPoolClientId = mdaiAppClient.userPoolClientId
-      consoleIngress.userPoolDomain = config.get('MDAI_COGNITO.USER_POOL_DOMAIN')
+      consoleIngress.userPoolDomain = config.get('mdai-cognito.user-pool-domain')
     }
 
     const consoleConfig = {
-      chart: config.get('MDAI_CONSOLE.CHART'),
-      repository: config.get('MDAI_CONSOLE.REPO'),
-      namespace: config.get('MDAI_CONSOLE.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('MDAI_CONSOLE.RELEASE'),
-      version: config.get('MDAI_CONSOLE.VERSION'),
-      wait: true,
+      ...config.util.toObject(config.get('mdai-console')),
       values: {
         'ingress': consoleIngress,
       }
     };
 
     const mdaiConsole = cluster.addHelmChart("mdai-console", consoleConfig);
-    if (config.get('MDAI_COGNITO.ENABLE') && mdaiAppClient) {
+    if (config.get('mdai-cognito.enable') && mdaiAppClient) {
       mdaiConsole.node.addDependency(mdaiAppClient);
     } 
 
@@ -284,12 +225,12 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     //
     // steps (non-cdk way) taken from here
     // https://karpenter.sh/docs/getting-started/migrating-from-cas/
-    if (config.get('KARPENTER.ENABLE')) {
+    if (config.get('karpenter.enable')) {
       const karpenterNodeRole = new iam.Role(
           this,
-          `KarpenterNodeRole-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`, 
+          `KarpenterNodeRole-${config.get('cluster.name')}-${process.env.AWS_REGION}`, 
           {
-            roleName: `KarpenterNodeRole-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`,
+            roleName: `KarpenterNodeRole-${config.get('cluster.name')}-${process.env.AWS_REGION}`,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
             managedPolicies: [
               iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
@@ -303,8 +244,8 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
 
       new iam.InstanceProfile(
           this,
-          `KarpenterNodeInstanceProfile-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`, {
-            instanceProfileName: `KarpenterNodeInstanceProfile-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`,
+          `KarpenterNodeInstanceProfile-${config.get('cluster.name')}-${process.env.AWS_REGION}`, {
+            instanceProfileName: `KarpenterNodeInstanceProfile-${config.get('cluster.name')}-${process.env.AWS_REGION}`,
             role: karpenterNodeRole,
           });
 
@@ -312,14 +253,14 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       const conditions = new cdk.CfnJson(this, 'ConditionAudienceServiceAccount', {
         value: {
           [`${cluster.clusterOpenIdConnectIssuer}:aud`]: 'sts.amazonaws.com',
-          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:${config.get('KARPENTER.NAMESPACE')}:karpenter`,
+          [`${cluster.clusterOpenIdConnectIssuer}:sub`]: `system:serviceaccount:${config.get('karpenter.namespace')}:karpenter`,
         },
       });
 
       const karpenterControllerRole = new iam.Role(
           this,
-          `KarpenterControllerRole-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`, {
-            roleName: `KarpenterControllerRole-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`,
+          `KarpenterControllerRole-${config.get('cluster.name')}-${process.env.AWS_REGION}`, {
+            roleName: `KarpenterControllerRole-${config.get('cluster.name')}-${process.env.AWS_REGION}`,
             assumedBy: new iam.FederatedPrincipal(`arn:${cdk.Aws.PARTITION}:iam::${cdk.Aws.ACCOUNT_ID}:oidc-provider/${cluster.clusterOpenIdConnectIssuer}`, {
                   'StringEquals': conditions
                 },
@@ -350,7 +291,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
         },
       });
 
-      const karpenterControllerPolicy = new iam.Policy(this, `KarpenterControllerPolicy-${config.get('CLUSTER.NAME')}-${process.env.AWS_REGION}`, {
+      const karpenterControllerPolicy = new iam.Policy(this, `KarpenterControllerPolicy-${config.get('cluster.name')}-${process.env.AWS_REGION}`, {
         statements: [
           new iam.PolicyStatement({
             resources: ['*'],
@@ -459,7 +400,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
       // NB: might be better to do this outside of CDK and call aws cli commands from Makefile
       // because security groups tagging can not be done here anyways
 
-      cdk.Tags.of(cluster).add('karpenter.sh\/discovery', `${config.get('CLUSTER.NAME')}`, {
+      cdk.Tags.of(cluster).add('karpenter.sh\/discovery', `${config.get('cluster.name')}`, {
         includeResourceTypes: ['AWS::EC2::Subnet'],
       });
     }
@@ -467,13 +408,7 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     // Add Datalyzer service to helm chart for installation
     
     cluster.addHelmChart("datalyzer", {
-      chart: config.get('DATALYZER.CHART'),
-      repository: config.get('DATALYZER.REPO'),
-      namespace: config.get('DATALYZER.NAMESPACE'),
-      createNamespace: true,
-      release: config.get('DATALYZER.RELEASE'),
-      version: config.get('DATALYZER.VERSION'),
-      wait: true,
+      ...config.util.toObject(config.get('datalyzer'))
     });
   }
 }

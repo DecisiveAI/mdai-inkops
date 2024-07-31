@@ -1,80 +1,108 @@
 {
-    "CLUSTER": {
-        "NAME": "DecisiveEngineCluster",
-        "CAPACITY": 10,
-        "INSTANCE": {
-            "CLASS": "t2",
-            "SIZE": "micro"
+    "cluster": {
+        "name": "DecisiveEngineCluster",
+        "capacity": 10,
+        "instance": {
+            "class": "t2",
+            "size": "micro"
         }
     },
-    "CERT_MANAGER": {
-        "NAMESPACE": "cert-manager",
-        "REPO": "https://charts.jetstack.io",
-        "VERSION": "1.13.1",
-        "CHART": "cert-manager",
-        "RELEASE": "cert-manager"
-    },
-    "OTEL_OPERATOR": {
-        "NAMESPACE": "opentelemetry-operator-system",
-        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
-        "VERSION": "0.43.1",
-        "CHART": "opentelemetry-operator",
-        "RELEASE": "opentelemetry-operator",
-        "MANAGER": {
-            "REPO": "public.ecr.aws/p3k6k6h3/opentelemetry-operator",
-            "VERSION": "latest"
+    "cert-manager": {
+        "namespace": "cert-manager",
+        "repository": "https://charts.jetstack.io",
+        "version": "1.13.1",
+        "chart": "cert-manager",
+        "release": "cert-manager",
+        "wait": true,
+        "createnamespace": true,
+        "values": {
+            "installCRDs": true
         }
     },
-    "PROMETHEUS": {
-        "NAMESPACE": "default",
-        "REPO": "https://prometheus-community.github.io/helm-charts",
-        "VERSION": "25.21.0",
-        "CHART": "prometheus",
-        "RELEASE": "prometheus"
+    "otel-operator": {
+        "namespace": "opentelemetry-operator-system",
+        "repository": "https://decisiveai.github.io/mdai-helm-charts",
+        "version": "0.43.1",
+        "chart": "opentelemetry-operator",
+        "release": "opentelemetry-operator",
+        "createNamespace": true,
+        "wait": true,
+        "values": {
+            "admissionWebhooks": {
+                "certManager": {
+                    "enabled": true
+                }
+            },
+            "manager": {
+                "image": {
+                    "repository": "public.ecr.aws/p3k6k6h3/opentelemetry-operator",
+                    "tag": "latest"
+                }
+            }
+        }
     },
-    "METRICS_SERVER": {
-        "NAMESPACE": "kube-system",
-        "REPO": "https://kubernetes-sigs.github.io/metrics-server/",
-        "VERSION": "3.12.1",
-        "CHART": "metrics-server",
-        "RELEASE": "metrics-server"
+    "prometheus": {
+        "namespace": "default",
+        "repository": "https://prometheus-community.github.io/helm-charts",
+        "version": "25.21.0",
+        "chart": "prometheus",
+        "release": "prometheus",
+        "createNamespace": true,
+        "wait": true
     },
-    "MDAI_API": {
-        "NAMESPACE": "default",
-        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
-        "VERSION": "0.0.3",
-        "CHART": "mdai-api",
-        "RELEASE": "mdai-api"
+    "metrics-server": {
+        "namespace": "kube-system",
+        "repository": "https://kubernetes-sigs.github.io/metrics-server/",
+        "version": "3.12.1",
+        "chart": "metrics-server",
+        "release": "metrics-server",
+        "createNamespace": true,
+        "wait": true
     },
-    "MDAI_CONSOLE": {
-        "NAMESPACE": "default",
-        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
-        "VERSION": "0.2.4",
-        "CHART": "mdai-console",
-        "RELEASE": "mdai-console",
-        "ACM_ARN": ""
+    "mdai-api": {
+        "namespace": "default",
+        "repository": "https://decisiveai.github.io/mdai-helm-charts",
+        "version": "0.0.3",
+        "chart": "mdai-api",
+        "release": "mdai-api",
+        "createNamespace": true,
+        "wait": true
     },
-    "MDAI_COGNITO": {
-        "ENABLE": false,
-        "UI_HOSTNAME": "console.mydecisive.ai",
-        "USER_POOL_DOMAIN": "mydecisive"
+    "mdai-console": {
+        "namespace": "default",
+        "repository": "https://decisiveai.github.io/mdai-helm-charts",
+        "version": "0.2.4",
+        "chart": "mdai-console",
+        "release": "mdai-console",
+        "createNamespace": true,
+        "wait": true,
+        "acm-arn": ""
     },
-    "KARPENTER": {
-        "ENABLE": true,
-        "NAMESPACE": "kube-system"
+    "mdai-cognito": {
+        "enable": false,
+        "ui-hostname": "console.mydecisive.ai",
+        "user-pool-domain": "mydecisive"
     },
-    "DATALYZER": {
-        "NAMESPACE": "default",
-        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
-        "VERSION": "0.0.4",
-        "CHART": "datalyzer",
-        "RELEASE": "datalyzer"
+    "karpenter": {
+        "enable": true,
+        "namespace": "kube-system"
     },
-    "MDAI_OPERATOR": {
-        "NAMESPACE": "mydecisive-engine-operator-system",
-        "REPO": "https://decisiveai.github.io/mdai-helm-charts",
-        "VERSION": "0.0.7",
-        "CHART": "mydecisive-engine-operator",
-        "RELEASE": "mydecisive-engine-operator"
+    "datalyzer": {
+        "namespace": "default",
+        "repository": "https://decisiveai.github.io/mdai-helm-charts",
+        "version": "0.0.4",
+        "chart": "datalyzer",
+        "release": "datalyzer",
+        "createNamespace": true,
+        "wait": true
+    },
+    "mdai-operator": {
+        "namespace": "mydecisive-engine-operator-system",
+        "repository": "https://decisiveai.github.io/mdai-helm-charts",
+        "version": "0.0.7",
+        "chart": "mydecisive-engine-operator",
+        "release": "mydecisive-engine-operator",
+        "createNamespace": true,
+        "wait": true
     }
 }
