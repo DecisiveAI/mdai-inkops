@@ -253,6 +253,25 @@ echo "User data script completed"
       )
     );
 
+    const loadBalancerReaderPolicy = new iam.Policy(this, 'DecisiveEngineLoadBalancerReaderPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: cdk.aws_iam.Effect.ALLOW,
+          actions: [
+            "elasticloadbalancing:DescribeLoadBalancers",
+            "ec2:DescribeNetworkInterfaces"
+          ],
+          resources: ["*"],
+        })
+      ],
+    });
+
+    const loadBalancerReaderRole = new iam.Role(this, 'LoadBalancerReaderRole', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'), // Adjust this as needed
+      description: 'Role to read load balancer configuration',
+    });
+    loadBalancerReaderPolicy.attachToRole(loadBalancerReaderRole);
+
     // Based on https://docs.aws.amazon.com/eks/latest/userguide/view-kubernetes-resources.html#view-kubernetes-resources-permissions
     const consoleAccessPolicy = new iam.Policy(
       this,
