@@ -132,22 +132,47 @@ export class DecisiveEngineAwsCdkStack extends cdk.Stack {
     // More details https://trying2adult.com/what-is-xdp-and-how-do-you-use-it-in-linux-amazon-ec2-example/
     // FIXME setting bellow applied only to ens5 and not ens6, check why
     // test with 'ethtool -l eth0'
-    const userDataScript = `#!/bin/bash
+    const userDataScript = `Content-Type: multipart/mixed; boundary="==MDAIBOUNDARY=="
+MIME-Version: 1.0
+
+--==MDAIBOUNDARY==
+Content-Type: text/cloud-config; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="cloud-config.txt"
+
+#cloud-config
+cloud_final_modules:
+- [scripts-user, always]
+
+--==MDAIBOUNDARY==
+Content-Type: text/x-shellscript; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="userdata.txt"
+
+#!/bin/bash
 sudo /etc/eks/bootstrap.sh --apiserver-endpoint '${clusterEndpoint}' --b64-cluster-ca '${clusterCertificateAuthorityData}' '${clusterName}'
-sleep 120  # Add a sleep to wait for all interfaces to be ready
-echo "Available network interfaces:"
+cat >/home/ubuntu/udev.sh  <<'EOL'
+#!/bin/bash
+
 ip -o link show
 for i in $(ip -o link show | awk -F': ' '{print $2}' | grep -Ev '(^lo|^eni)')
-do 
-        echo -ne "Setting combined settings for $i\n"
+do
         sudo ethtool -L $i combined 1
+        sudo ip link set dev $i mtu 3498
         if [ $? -eq 0 ]; then
           echo "Configured $i successfully"
         else
           echo "Failed to configure $i" >&2
   fi
 done
-echo "User data script completed"
+EOL
+chmod +x /home/ubuntu/udev.sh
+echo 'KERNEL=="ens*", RUN+="/home/ubuntu/udev.sh"' > /etc/udev/rules.d/80-ens-ebpf.rules
+
+
+--==MDAIBOUNDARY==--
 `;
 
     // retrieve the latest Ubuntu EKS AMI ID from SSM Parameter Store, ubuntu https://cloud-images.ubuntu.com/docs/aws/eks/
@@ -160,7 +185,7 @@ echo "User data script completed"
       launchTemplateName: 'UbuntuLaunchTemplate',
       launchTemplateData: {
         imageId: amiId,
-        // keyName: 'node', // uncomment for debug purpose via ssh
+         //keyName: 'node', // uncomment for debug purpose via ssh
         userData: cdk.Fn.base64(userDataScript),
         securityGroupIds: [cluster.clusterSecurityGroup.securityGroupId],
         tagSpecifications: [
@@ -699,5 +724,6 @@ echo "User data script completed"
       version: config.DATALYZER.VERSION,
       wait: true,
     });
+
   }
 }
